@@ -53,6 +53,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _seekedInitial = false;
   bool _controlsVisible = true;
   Timer? _controlsTimer;
+  bool _locked = false;
+  Timer? _lockHintTimer;
+  bool _lockHintVisible = false;
 
   /// Args of the currently loaded media. Mutable so auto-advance can swap
   /// the source in place without growing the router stack.
@@ -228,6 +231,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _maybeReport(force: true);
     PipController.setEnabled(enabled: false);
     _controlsTimer?.cancel();
+    _lockHintTimer?.cancel();
     _sleepTimer?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
@@ -382,6 +386,30 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
   }
 
+  void _toggleLock() {
+    setState(() {
+      _locked = !_locked;
+      if (_locked) {
+        _controlsVisible = false;
+        _controlsTimer?.cancel();
+      } else {
+        _controlsVisible = true;
+        _resetControlsTimer();
+      }
+    });
+  }
+
+  /// Show a brief lock indicator + unlock button when the user taps the
+  /// dimmed video while locked. Auto-hides after 2s.
+  void _showLockHint() {
+    _lockHintTimer?.cancel();
+    setState(() => _lockHintVisible = true);
+    _lockHintTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() => _lockHintVisible = false);
+    });
+  }
+
   Future<void> _retryPlayback() async {
     // mpv keeps the failed source loaded; stop first so a re-open actually
     // re-fetches instead of hitting the cached failure state.
@@ -465,20 +493,30 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               ),
             ),
             // Custom gestures: seek / brightness / volume / ±10s / 2x.
-            Positioned.fill(
-              child: PlayerGestureOverlay(
-                player: _player,
-                position: _position,
-                duration: _duration,
-                onTap: _toggleControls,
+            // When locked, the overlay absorbs taps so accidental touches
+            // don't pause or scrub — only the unlock button is reachable.
+            if (!_locked)
+              Positioned.fill(
+                child: PlayerGestureOverlay(
+                  player: _player,
+                  position: _position,
+                  duration: _duration,
+                  onTap: _toggleControls,
+                ),
+              )
+            else
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _showLockHint,
+                ),
               ),
-            ),
             // Top + bottom chrome auto-hide after 3s of inactivity.
             AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: _controlsVisible ? 1.0 : 0.0,
+              opacity: (_controlsVisible && !_locked) ? 1.0 : 0.0,
               child: IgnorePointer(
-                ignoring: !_controlsVisible,
+                ignoring: !_controlsVisible || _locked,
                 child: _PlayerChrome(
                   title: _args.title,
                   position: _position,
@@ -503,9 +541,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   sleepArmed: _isSleepArmed,
                   onPickSleep: _pickSleepTimer,
                   onPickTracks: _hasPickableTracks ? _pickTracks : null,
+                  onLock: _toggleLock,
                 ),
               ),
             ),
+            if (_locked)
+              Positioned(
+                left: 12,
+                top: 12,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _lockHintVisible ? 1.0 : 0.0,
+                  child: IgnorePointer(
+                    ignoring: !_lockHintVisible,
+                    child: FloatingActionButton.small(
+                      backgroundColor: Colors.black54,
+                      foregroundColor: Colors.white,
+                      onPressed: _toggleLock,
+                      tooltip: '解锁',
+                      child: const Icon(Icons.lock_open),
+                    ),
+                  ),
+                ),
+              ),
             if (_playbackError != null && !isCasting)
               Positioned.fill(
                 child: _ErrorOverlay(
@@ -700,6 +758,7 @@ class _PlayerChrome extends StatelessWidget {
   final bool sleepArmed;
   final VoidCallback onPickSleep;
   final VoidCallback? onPickTracks;
+  final VoidCallback onLock;
 
   const _PlayerChrome({
     required this.title,
@@ -716,6 +775,7 @@ class _PlayerChrome extends StatelessWidget {
     required this.onPickRate,
     required this.sleepArmed,
     required this.onPickSleep,
+    required this.onLock,
     this.onEpisodes,
     this.onPickTracks,
   });
@@ -779,6 +839,11 @@ class _PlayerChrome extends StatelessWidget {
                 ),
                 tooltip: '睡眠定时',
                 onPressed: onPickSleep,
+              ),
+              IconButton(
+                icon: const Icon(Icons.lock_outline, color: Colors.white),
+                tooltip: '锁屏',
+                onPressed: onLock,
               ),
               IconButton(
                 icon: const Icon(Icons.picture_in_picture_alt,
