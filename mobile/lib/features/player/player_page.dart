@@ -14,6 +14,7 @@ import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/pip/pip_controller.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
+import 'package:animex_mobile/features/player/episode_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_gestures.dart';
 
@@ -213,6 +214,33 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
   }
 
+  Future<void> _openEpisodePicker() async {
+    if (_args.playlist.isEmpty) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => EpisodePickerSheet(
+        playlist: _args.playlist,
+        currentIndex: _args.currentIndex,
+        onPick: _jumpToEpisode,
+      ),
+    );
+  }
+
+  Future<void> _jumpToEpisode(int newIndex) async {
+    if (newIndex < 0 || newIndex >= _args.playlist.length) return;
+    _maybeReport(force: true);
+    final next = _args.playlist[newIndex].copyWithReset();
+    setState(() {
+      _args = next;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _seekedInitial = false;
+      _controlsVisible = true;
+    });
+    _resetControlsTimer();
+    await _open();
+  }
+
   Future<void> _startCasting(CastManager manager, CastDevice device) async {
     await _player.pause();
     await manager.cast(
@@ -278,6 +306,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   },
                   onPip: () => PipController.enterNow(),
                   onCast: _openCastPicker,
+                  onEpisodes:
+                      _args.playlist.length > 1 ? _openEpisodePicker : null,
                 ),
               ),
             ),
@@ -396,6 +426,7 @@ class _PlayerChrome extends StatelessWidget {
   final ValueChanged<Duration> onSeek;
   final VoidCallback onPip;
   final VoidCallback onCast;
+  final VoidCallback? onEpisodes;
 
   const _PlayerChrome({
     required this.title,
@@ -408,6 +439,7 @@ class _PlayerChrome extends StatelessWidget {
     required this.onSeek,
     required this.onPip,
     required this.onCast,
+    this.onEpisodes,
   });
 
   String _fmt(Duration d) {
@@ -448,6 +480,13 @@ class _PlayerChrome extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (onEpisodes != null)
+                IconButton(
+                  icon: const Icon(Icons.video_library_outlined,
+                      color: Colors.white),
+                  tooltip: '剧集',
+                  onPressed: onEpisodes,
+                ),
               IconButton(
                 icon: const Icon(Icons.picture_in_picture_alt,
                     color: Colors.white),
