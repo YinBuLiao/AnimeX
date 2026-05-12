@@ -542,6 +542,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   onPickSleep: _pickSleepTimer,
                   onPickTracks: _hasPickableTracks ? _pickTracks : null,
                   onLock: _toggleLock,
+                  onPrevEpisode: _args.currentIndex > 0
+                      ? () => _jumpToEpisode(_args.currentIndex - 1)
+                      : null,
+                  onNextEpisode:
+                      _args.currentIndex + 1 < _args.playlist.length
+                          ? () => _jumpToEpisode(_args.currentIndex + 1)
+                          : null,
                 ),
               ),
             ),
@@ -758,6 +765,8 @@ class _PlayerChrome extends StatelessWidget {
   final bool sleepArmed;
   final VoidCallback onPickSleep;
   final VoidCallback? onPickTracks;
+  final VoidCallback? onPrevEpisode;
+  final VoidCallback? onNextEpisode;
   final VoidCallback onLock;
 
   const _PlayerChrome({
@@ -778,6 +787,8 @@ class _PlayerChrome extends StatelessWidget {
     required this.onLock,
     this.onEpisodes,
     this.onPickTracks,
+    this.onPrevEpisode,
+    this.onNextEpisode,
   });
 
   String _fmt(Duration d) {
@@ -878,12 +889,22 @@ class _PlayerChrome extends StatelessWidget {
               Row(
                 children: [
                   IconButton(
+                    icon: const Icon(Icons.skip_previous, color: Colors.white),
+                    tooltip: '上一集',
+                    onPressed: onPrevEpisode,
+                  ),
+                  IconButton(
                     icon: Icon(
                       playing ? Icons.pause : Icons.play_arrow,
                       color: Colors.white,
                       size: 32,
                     ),
                     onPressed: onTogglePlay,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.skip_next, color: Colors.white),
+                    tooltip: '下一集',
+                    onPressed: onNextEpisode,
                   ),
                   Text(
                     _fmt(position),
