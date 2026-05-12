@@ -87,6 +87,9 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         padding: const EdgeInsets.all(16),
         children: [
           _Hero(args: args),
+          const SizedBox(height: 12),
+          if (matched != null && matched.episodes.isNotEmpty)
+            _ResumeButton(bangumi: matched, detailArgs: args),
           const SizedBox(height: 16),
           if (args.summary != null && args.summary!.isNotEmpty)
             Text(args.summary!, style: const TextStyle(height: 1.5)),
@@ -182,6 +185,99 @@ class _Hero extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ResumeButton extends ConsumerWidget {
+  final LibraryBangumi bangumi;
+  final DetailArgs detailArgs;
+  const _ResumeButton({required this.bangumi, required this.detailArgs});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cfgAsync = ref.watch(serverConfigProvider);
+    final historyAsync = ref.watch(historyListProvider);
+    final downloads = ref.watch(downloadEntriesProvider);
+    final baseUrl = cfgAsync.maybeWhen(
+      data: (c) => c.baseUrl.trimRight(),
+      orElse: () => '',
+    );
+    if (baseUrl.isEmpty) return const SizedBox.shrink();
+
+    final history = historyAsync.asData?.value.entries ?? const [];
+    final fileIdToTs = <String, HistoryEntry>{
+      for (final h in history)
+        if (h.fileId.isNotEmpty) h.fileId: h,
+    };
+
+    // Find the most recently watched episode that's still mid-progress; fall
+    // back to the most recent finished one, or the first unwatched episode.
+    Episode? resumeEpisode;
+    HistoryEntry? resumeHist;
+    int bestTs = 0;
+    for (final ep in bangumi.episodes) {
+      if (ep.files.isEmpty) continue;
+      final h = fileIdToTs[ep.files.first.id];
+      if (h == null) continue;
+      if (h.updatedAt > bestTs) {
+        bestTs = h.updatedAt;
+        resumeEpisode = ep;
+        resumeHist = h;
+      }
+    }
+    Episode? startEpisode;
+    int startSec = 0;
+    String label;
+    IconData icon;
+    if (resumeEpisode != null && resumeHist != null) {
+      final progress = resumeHist.durationSec > 0
+          ? resumeHist.positionSec / resumeHist.durationSec
+          : 0.0;
+      if (progress >= 0.95) {
+        // Latest watched is finished — jump to the next episode if available.
+        final idx = bangumi.episodes.indexOf(resumeEpisode);
+        if (idx >= 0 && idx + 1 < bangumi.episodes.length) {
+          startEpisode = bangumi.episodes[idx + 1];
+          label = '下一集 · EP ${startEpisode.label}';
+          icon = Icons.skip_next;
+        } else {
+          // Final episode finished — offer rewatch from start.
+          startEpisode = bangumi.episodes.first;
+          label = '从头观看';
+          icon = Icons.replay;
+        }
+      } else {
+        startEpisode = resumeEpisode;
+        startSec = resumeHist.positionSec;
+        label = '继续观看 · EP ${resumeEpisode.label}';
+        icon = Icons.play_arrow_rounded;
+      }
+    } else {
+      startEpisode = bangumi.episodes.first;
+      label = '播放 EP ${startEpisode.label}';
+      icon = Icons.play_arrow_rounded;
+    }
+    if (startEpisode.files.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: () {
+          final args = buildBangumiArgs(
+            bangumi: bangumi,
+            selectedFileId: startEpisode!.files.first.id,
+            baseUrl: baseUrl,
+            downloads: downloads,
+            initialPositionSec: startSec,
+            coverUrlFallback: detailArgs.coverUrl,
+          );
+          if (args == null) return;
+          context.push('/player', extra: args);
+        },
+        icon: Icon(icon),
+        label: Text(label),
+      ),
     );
   }
 }
