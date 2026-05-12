@@ -154,4 +154,61 @@ class AdminRepository {
       throw e.toApi();
     }
   }
+
+  Future<List<AdminAnimeItem>> listAnime() async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>('/api/admin/anime');
+      return (resp.data?['items'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminAnimeItem.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  /// Bulk-deletes bangumi by title. When deleteFiles is true the backend
+  /// also tries to remove the underlying storage. Returns true on success.
+  Future<int> deleteAnime({
+    required List<String> titles,
+    bool deleteFiles = false,
+  }) async {
+    try {
+      final resp = await _dio.delete<Map<String, dynamic>>(
+        '/api/admin/anime',
+        data: {
+          'titles': titles,
+          'delete_files': deleteFiles,
+        },
+      );
+      return (resp.data?['deleted'] as num?)?.toInt() ?? 0;
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  Future<Map<String, dynamic>> getSystemConfig() async {
+    try {
+      final resp =
+          await _dio.get<Map<String, dynamic>>('/api/admin/config');
+      return Map<String, dynamic>.from(
+          (resp.data?['config'] as Map?) ?? const {});
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  Future<Map<String, dynamic>> saveSystemConfig(
+      Map<String, dynamic> patch) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/api/admin/config',
+        data: patch,
+      );
+      return Map<String, dynamic>.from(
+          (resp.data?['config'] as Map?) ?? const {});
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
 }

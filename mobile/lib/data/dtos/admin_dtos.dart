@@ -162,6 +162,41 @@ class AdminUser {
   }
 }
 
+class AdminAnimeItem {
+  final String id;
+  final String title;
+  final String coverUrl;
+  final int episodeCount;
+  final int fileCount;
+  final int storageBytes;
+  final String status;
+  final String updatedAt;
+
+  const AdminAnimeItem({
+    required this.id,
+    required this.title,
+    required this.coverUrl,
+    required this.episodeCount,
+    required this.fileCount,
+    required this.storageBytes,
+    required this.status,
+    required this.updatedAt,
+  });
+
+  factory AdminAnimeItem.fromJson(Map<String, dynamic> json) {
+    return AdminAnimeItem(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      coverUrl: (json['cover_url'] ?? '').toString(),
+      episodeCount: (json['episode_count'] as num?)?.toInt() ?? 0,
+      fileCount: (json['file_count'] as num?)?.toInt() ?? 0,
+      storageBytes: (json['storage_bytes'] as num?)?.toInt() ?? 0,
+      status: (json['status'] ?? '').toString(),
+      updatedAt: (json['updated_at'] ?? '').toString(),
+    );
+  }
+}
+
 class AdminInviteCode {
   final String code;
   final String usedBy;

@@ -44,20 +44,20 @@ class AdminTab extends StatelessWidget {
     _Entry(
       icon: Icons.tv_outlined,
       title: '番剧管理',
-      subtitle: '只读，编辑请前往 Web 管理面板',
-      route: '/admin/web/anime',
+      subtitle: '查看 / 批量删除已索引番剧',
+      route: '/admin/anime',
     ),
     _Entry(
       icon: Icons.storage_outlined,
       title: '储存桶配置',
-      subtitle: '只读，编辑请前往 Web 管理面板',
-      route: '/admin/web/storage',
+      subtitle: '存储类型 / PikPak / 115 / Aria2 / 本地路径',
+      route: '/admin/storage',
     ),
     _Entry(
       icon: Icons.settings_outlined,
       title: '系统设置',
-      subtitle: '只读，编辑请前往 Web 管理面板',
-      route: '/admin/web/settings',
+      subtitle: '登录策略 / Mikan 账号 / 下载上限',
+      route: '/admin/settings',
     ),
   ];
 

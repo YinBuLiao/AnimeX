@@ -9,14 +9,15 @@ import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_page.dart';
+import 'package:animex_mobile/features/admin/admin_anime_page.dart';
 import 'package:animex_mobile/features/admin/admin_invite_codes_page.dart';
+import 'package:animex_mobile/features/admin/admin_system_settings_page.dart';
 import 'package:animex_mobile/features/admin/admin_logs_page.dart';
 import 'package:animex_mobile/features/admin/admin_monitor_page.dart';
 import 'package:animex_mobile/features/admin/admin_overview_page.dart';
 import 'package:animex_mobile/features/admin/admin_requests_page.dart';
 import 'package:animex_mobile/features/admin/admin_tab.dart';
 import 'package:animex_mobile/features/admin/admin_users_page.dart';
-import 'package:animex_mobile/features/admin/admin_web_placeholder_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
 import 'package:animex_mobile/features/discover/search_view.dart';
 import 'package:animex_mobile/features/downloads/downloads_page.dart';
@@ -147,25 +148,18 @@ GoRouter buildRouter(Ref ref) {
         builder: (_, __) => const AdminInviteCodesPage(),
       ),
       GoRoute(
-        path: '/admin/web/anime',
-        builder: (_, __) => const AdminWebPlaceholderPage(
-          title: '番剧管理',
-          webPath: '/admin#anime',
-        ),
+        path: '/admin/anime',
+        builder: (_, __) => const AdminAnimePage(),
       ),
       GoRoute(
-        path: '/admin/web/storage',
-        builder: (_, __) => const AdminWebPlaceholderPage(
-          title: '储存桶配置',
-          webPath: '/admin#storage',
-        ),
+        path: '/admin/storage',
+        builder: (_, __) =>
+            const AdminSystemSettingsPage(focusSection: 'storage'),
       ),
       GoRoute(
-        path: '/admin/web/settings',
-        builder: (_, __) => const AdminWebPlaceholderPage(
-          title: '系统设置',
-          webPath: '/admin#settings',
-        ),
+        path: '/admin/settings',
+        builder: (_, __) =>
+            const AdminSystemSettingsPage(focusSection: 'system'),
       ),
       GoRoute(
         path: '/downloads',
