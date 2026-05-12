@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/data/dtos/notification_entry.dart';
+import 'package:animex_mobile/features/detail/detail_args.dart';
 
 final _notificationsListProvider =
     FutureProvider<List<NotificationEntry>>((ref) async {
@@ -103,9 +105,28 @@ class _Tile extends StatelessWidget {
         '${dt.day.toString().padLeft(2, '0')}';
   }
 
+  bool get _hasTarget =>
+      entry.kind == NotificationEntry.kindNewEpisode &&
+      (entry.bangumiTitle?.isNotEmpty ?? false);
+
+  void _open(BuildContext context) {
+    if (!_hasTarget) return;
+    context.push(
+      '/detail',
+      extra: DetailArgs(
+        title: entry.bangumiTitle!,
+        coverUrl: entry.coverUrl,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: _hasTarget ? () => _open(context) : null,
+      trailing: _hasTarget
+          ? const Icon(Icons.chevron_right, size: 20)
+          : null,
       leading: Icon(_iconFor(entry.kind)),
       title: Text(entry.title.isEmpty ? '通知' : entry.title),
       subtitle: Padding(
