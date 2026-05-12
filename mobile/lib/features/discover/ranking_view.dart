@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/widgets/cover_image.dart';
 import 'package:animex_mobile/data/dtos/bangumi_subject.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 
@@ -189,24 +190,10 @@ class _Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url == null || url!.isEmpty) {
-      return Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        alignment: Alignment.center,
-        child: const Icon(Icons.image_not_supported_outlined),
-      );
-    }
-    return ClipRRect(
+    return CoverImage(
+      url: url,
+      cacheWidth: 360,
       borderRadius: BorderRadius.circular(6),
-      child: Image.network(
-        url!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          alignment: Alignment.center,
-          child: const Icon(Icons.broken_image_outlined),
-        ),
-      ),
     );
   }
 }

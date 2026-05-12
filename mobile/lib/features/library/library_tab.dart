@@ -6,6 +6,7 @@ import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/core/preferences/app_preferences.dart';
+import 'package:animex_mobile/core/widgets/cover_image.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
@@ -286,26 +287,11 @@ class _Grid extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: (b.coverUrl == null || b.coverUrl!.isEmpty)
-                          ? Container(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              child: const Icon(
-                                  Icons.image_not_supported_outlined),
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.network(b.coverUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        child: const Icon(
-                                            Icons.broken_image_outlined),
-                                      )),
-                            ),
+                      child: CoverImage(
+                        url: b.coverUrl,
+                        cacheWidth: 360,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                     if (_bangumiHasOffline(b))
                       Positioned(

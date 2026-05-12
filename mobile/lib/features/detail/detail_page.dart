@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
+import 'package:animex_mobile/core/widgets/cover_image.dart';
 import 'package:animex_mobile/data/dtos/download_entry.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
@@ -167,22 +168,11 @@ class _Hero extends StatelessWidget {
         SizedBox(
           width: 120,
           height: 160,
-          child: (args.coverUrl == null || args.coverUrl!.isEmpty)
-              ? Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Icon(Icons.image_not_supported_outlined),
-                )
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    args.coverUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.broken_image_outlined),
-                    ),
-                  ),
-                ),
+          child: CoverImage(
+            url: args.coverUrl,
+            cacheWidth: 480,
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(

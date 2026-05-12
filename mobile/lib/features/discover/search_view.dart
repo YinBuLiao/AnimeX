@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/core/preferences/search_history.dart';
+import 'package:animex_mobile/core/widgets/cover_image.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/data/dtos/search_result.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
@@ -245,25 +246,11 @@ class _ResultTile extends ConsumerWidget {
       leading: SizedBox(
         width: 48,
         height: 64,
-        child: (cover == null || cover.isEmpty)
-            ? Container(
-                color:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.image_not_supported_outlined),
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Image.network(
-                  cover,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest,
-                    child: const Icon(Icons.broken_image_outlined),
-                  ),
-                ),
-              ),
+        child: CoverImage(
+          url: cover,
+          cacheWidth: 192,
+          borderRadius: BorderRadius.circular(4),
+        ),
       ),
       title: Text(
         result.bangumiTitle ?? result.title,

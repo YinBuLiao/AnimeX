@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/widgets/cover_image.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
@@ -307,20 +308,10 @@ class _HistoryCard extends ConsumerWidget {
   }
 
   Widget _cover(BuildContext ctx, String? url) {
-    if (url == null || url.isEmpty) {
-      return Container(
-        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-        child: const Icon(Icons.image_not_supported_outlined),
-      );
-    }
-    return ClipRRect(
+    return CoverImage(
+      url: url,
+      cacheWidth: 360,
       borderRadius: BorderRadius.circular(6),
-      child: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
-        return Container(
-          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-          child: const Icon(Icons.broken_image_outlined),
-        );
-      }),
     );
   }
 }
@@ -422,26 +413,11 @@ class _BangumiCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 3 / 4,
-              child: item.coverUrl == null || item.coverUrl!.isEmpty
-                  ? Container(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      child: const Icon(Icons.image_not_supported_outlined),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        item.coverUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: const Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-                    ),
+              child: CoverImage(
+                url: item.coverUrl,
+                cacheWidth: 360,
+                borderRadius: BorderRadius.circular(6),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
