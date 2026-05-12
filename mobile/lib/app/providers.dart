@@ -7,6 +7,7 @@ import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/notifications/device_registrar.dart';
 import 'package:animex_mobile/core/preferences/app_preferences.dart';
+import 'package:animex_mobile/core/preferences/notifications_seen.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/admin_repository.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
@@ -138,4 +139,26 @@ final pushTokenSourceProvider =
 final appPreferencesProvider = ChangeNotifierProvider<AppPreferences>((_) {
   throw StateError(
       'appPreferencesProvider must be overridden at app startup');
+});
+
+/// Persists the "last seen" notification timestamp for the unread badge.
+final notificationsSeenStoreProvider =
+    FutureProvider<NotificationsSeenStore>((_) async {
+  return NotificationsSeenStore.load();
+});
+
+/// Unread notification count. Watches the notifications repo + the local
+/// last-seen pref. Invalidate after the user views the notifications page
+/// to clear the badge.
+final unreadNotificationsCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final repo = await ref.watch(notificationsRepositoryProvider.future);
+  final seen = await ref.watch(notificationsSeenStoreProvider.future);
+  final resp = await repo.list();
+  final cutoff = seen.lastSeenAt;
+  var count = 0;
+  for (final e in resp.entries) {
+    if (e.createdAt > cutoff) count++;
+  }
+  return count;
 });

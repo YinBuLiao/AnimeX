@@ -11,12 +11,33 @@ final _notificationsListProvider =
   return resp.entries;
 });
 
-class NotificationsPage extends ConsumerWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  bool _markedSeen = false;
+
+  Future<void> _maybeMarkSeen(List<NotificationEntry> entries) async {
+    if (_markedSeen || entries.isEmpty) return;
+    _markedSeen = true;
+    var maxTs = 0;
+    for (final e in entries) {
+      if (e.createdAt > maxTs) maxTs = e.createdAt;
+    }
+    if (maxTs <= 0) return;
+    final store = await ref.read(notificationsSeenStoreProvider.future);
+    await store.markSeen(maxTs);
+    if (mounted) ref.invalidate(unreadNotificationsCountProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(_notificationsListProvider);
+    async.whenData(_maybeMarkSeen);
     return Scaffold(
       appBar: AppBar(title: const Text('通知')),
       body: RefreshIndicator(

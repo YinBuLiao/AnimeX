@@ -4,6 +4,30 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 
+class _UnreadBadge extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(unreadNotificationsCountProvider);
+    final count = async.asData?.value ?? 0;
+    if (count <= 0) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.error,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onError,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
 
@@ -85,6 +109,7 @@ class ProfileTab extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.notifications_outlined),
                 title: const Text('通知'),
+                trailing: _UnreadBadge(),
                 onTap: () => GoRouter.of(context).push('/notifications'),
               ),
               ListTile(
