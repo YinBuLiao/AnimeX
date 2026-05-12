@@ -169,3 +169,6 @@ docker-data/
 # Keep Go source package tracked despite local torrent cache ignore
 !internal/torrent/
 !internal/torrent/**
+
+# uiautomator2 smoke test debug artifacts
+mobile/scripts/u2_screenshots/
