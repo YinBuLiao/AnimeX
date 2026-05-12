@@ -4,6 +4,82 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 
+class _HealthStatusRow extends ConsumerWidget {
+  const _HealthStatusRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(healthInfoProvider);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+      child: async.when(
+        loading: () => const SizedBox(
+          height: 24,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+        error: (e, _) => Align(
+          alignment: Alignment.centerLeft,
+          child: _Pill(
+            label: '连接失败',
+            ok: false,
+            tooltip: '$e',
+          ),
+        ),
+        data: (h) => Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            _Pill(label: '在线', ok: true),
+            _Pill(label: 'Mikan', ok: h.mikanConfigured),
+            _Pill(label: 'MySQL', ok: h.mysqlReady),
+            _Pill(label: '存储', ok: h.pikpakConfigured),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final String label;
+  final bool ok;
+  final String? tooltip;
+  const _Pill({required this.label, required this.ok, this.tooltip});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = ok ? theme.colorScheme.primary : theme.colorScheme.outline;
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            ok ? Icons.check_circle : Icons.remove_circle_outline,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 11, color: color)),
+        ],
+      ),
+    );
+    return tooltip == null ? pill : Tooltip(message: tooltip!, child: pill);
+  }
+}
+
 class _UnreadBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,6 +165,7 @@ class ProfileTab extends ConsumerWidget {
                 title: const Text('当前服务器'),
                 subtitle: Text(serverLabel),
               ),
+              const _HealthStatusRow(),
               ListTile(
                 leading: const Icon(Icons.swap_horiz),
                 title: const Text('更换服务器'),

@@ -17,6 +17,7 @@ import 'package:animex_mobile/data/repositories/history_repository.dart';
 import 'package:animex_mobile/data/repositories/library_repository.dart';
 import 'package:animex_mobile/data/repositories/notifications_repository.dart';
 import 'package:animex_mobile/data/repositories/subscription_repository.dart';
+import 'package:animex_mobile/data/dtos/health_info.dart';
 import 'package:animex_mobile/data/repositories/system_repository.dart';
 
 /// Injectable factory for [Dio]. Tests override this to supply a Dio with a
@@ -151,6 +152,13 @@ final subscribedStoreProvider = FutureProvider<SubscribedStore>((_) async {
 final notificationsSeenStoreProvider =
     FutureProvider<NotificationsSeenStore>((_) async {
   return NotificationsSeenStore.load();
+});
+
+/// Server health snapshot for the profile tab status pills. Auto-dispose
+/// so we don't keep hitting /api/health between visits.
+final healthInfoProvider = FutureProvider.autoDispose<HealthInfo>((ref) async {
+  final repo = await ref.watch(systemRepositoryProvider.future);
+  return repo.health();
 });
 
 /// Pending admin download-request count for the bottom-nav badge. Admin
