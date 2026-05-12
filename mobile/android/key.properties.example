@@ -1,0 +1,17 @@
+# Copy to mobile/android/key.properties and fill in the values for release
+# signing. The actual file is gitignored.
+#
+# Generate a keystore (run from mobile/android/):
+#   keytool -genkey -v -keystore animex.jks \
+#     -alias animex -keyalg RSA -keysize 2048 -validity 36500
+#
+# Then point this file at it. Relative paths are resolved against
+# mobile/android/app/. For CI, store these four values as repository
+# secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) — the workflow decodes
+# the base64 into the keystore file and writes this properties file.
+
+storeFile=../animex.jks
+storePassword=CHANGE_ME
+keyAlias=animex
+keyPassword=CHANGE_ME

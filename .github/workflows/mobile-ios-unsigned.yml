@@ -1,0 +1,65 @@
+name: Mobile iOS Unsigned
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.41.9'
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: CocoaPods install
+        run: pod install --project-directory=ios
+
+      - name: Build .xcarchive (no codesign)
+        run: flutter build ipa --no-codesign
+
+      - name: Export unsigned IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ios/ipa-unsigned \
+            -exportOptionsPlist ios/export_unsigned.plist
+          ls -la build/ios/ipa-unsigned
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: animex-ios-unsigned-${{ github.ref_name }}
+          path: mobile/build/ios/ipa-unsigned/*.ipa
+          if-no-files-found: error
+
+      - name: Attach IPA to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mobile/build/ios/ipa-unsigned/*.ipa
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            ## iOS 安装说明
+
+            此 IPA 为**未签名版本**，无法直接安装到 iPhone。
+            请按 [docs/mobile-signing.md](../blob/main/docs/mobile-signing.md)
+            选择以下任一方式自签后安装：
+
+            - Sideloadly + 个人 Apple ID（推荐，7 天有效）
+            - Apple Developer Program（$99/年，90 天有效）
+            - TrollStore（仅 iOS ≤ 17.0 部分版本，永久签名）
