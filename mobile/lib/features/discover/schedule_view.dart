@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/data/dtos/mikan_schedule.dart';
 import 'package:animex_mobile/data/dtos/search_result.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
+import 'package:animex_mobile/features/detail/detail_page.dart'
+    show libraryListProvider;
 
 /// Caches the Mikan schedule for the current session.
 final mikanScheduleProvider = FutureProvider<MikanSchedule>((ref) async {
@@ -83,12 +86,18 @@ class _ScheduleList extends StatelessWidget {
   }
 }
 
-class _ScheduleItemCard extends StatelessWidget {
+class _ScheduleItemCard extends ConsumerWidget {
   final ScheduleItem item;
   const _ScheduleItemCard({required this.item});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final libAsync = ref.watch(libraryListProvider);
+    final inLib = libAsync.maybeWhen(
+      data: (lib) =>
+          lib.bangumi.any((LibraryBangumi b) => b.title == item.title),
+      orElse: () => false,
+    );
     return InkWell(
       onTap: () {
         // Bridge schedule item → search-result-shaped detail args. The
@@ -107,7 +116,30 @@ class _ScheduleItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _Cover(url: item.coverUrl)),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(child: _Cover(url: item.coverUrl)),
+                if (inLib)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.video_library,
+                          size: 12, color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             item.title,
