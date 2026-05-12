@@ -14,6 +14,7 @@ import 'package:animex_mobile/features/downloads/downloads_page.dart';
 import 'package:animex_mobile/features/history/history_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 import 'package:animex_mobile/features/library/library_tab.dart';
+import 'package:animex_mobile/features/notifications/notifications_page.dart';
 import 'package:animex_mobile/features/profile/profile_tab.dart';
 import 'package:animex_mobile/features/server_setup/server_setup_page.dart';
 import 'package:animex_mobile/features/shell/app_shell.dart';
@@ -106,6 +107,10 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/history',
         builder: (_, __) => const HistoryPage(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsPage(),
       ),
       GoRoute(
         path: '/downloads',

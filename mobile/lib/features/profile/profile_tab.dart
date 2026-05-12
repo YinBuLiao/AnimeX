@@ -83,6 +83,11 @@ class ProfileTab extends ConsumerWidget {
                 onTap: () => GoRouter.of(context).push('/history'),
               ),
               ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('通知'),
+                onTap: () => GoRouter.of(context).push('/notifications'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.password_outlined),
                 title: const Text('修改密码'),
                 subtitle: const Text('请前往 Web 管理面板'),

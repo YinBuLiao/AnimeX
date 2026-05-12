@@ -183,6 +183,9 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("/api/sync", s.handleSync)
 	mux.HandleFunc("/api/stream", s.handleStream)
 	mux.HandleFunc("/api/history", s.handleHistory)
+	mux.HandleFunc("/api/notifications", s.handleNotifications)
+	mux.HandleFunc("/api/devices/register", s.handleDeviceRegister)
+	mux.HandleFunc("/api/devices/unregister", s.handleDeviceUnregister)
 	return loggingMiddleware(s.log(), s.installLockMiddleware(s.authMiddleware(mux)))
 }
 
@@ -846,6 +849,13 @@ func (s Server) handleAdminDownloadRequests(w http.ResponseWriter, r *http.Reque
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
+			s.notifyUser(item.Username, Notification{
+				Kind:         NotificationKindRequestApproved,
+				Title:        "下载申请已通过",
+				Body:         item.BangumiTitle + " · " + item.EpisodeLabel,
+				BangumiTitle: item.BangumiTitle,
+				Episode:      item.EpisodeLabel,
+			})
 			items, _ := s.LocalDB.ListDownloadRequests(r.Context())
 			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已同意并提交到 " + storageProviderLabel(providerName) + " 下载队列", "items": items})
 		case "reject":

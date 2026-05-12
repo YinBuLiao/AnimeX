@@ -5,11 +5,13 @@ import 'package:animex_mobile/core/auth/session_store.dart';
 import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
+import 'package:animex_mobile/core/notifications/device_registrar.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
 import 'package:animex_mobile/data/repositories/discover_repository.dart';
 import 'package:animex_mobile/data/repositories/history_repository.dart';
 import 'package:animex_mobile/data/repositories/library_repository.dart';
+import 'package:animex_mobile/data/repositories/notifications_repository.dart';
 import 'package:animex_mobile/data/repositories/subscription_repository.dart';
 import 'package:animex_mobile/data/repositories/system_repository.dart';
 
@@ -89,6 +91,12 @@ final historyRepositoryProvider =
   return HistoryRepository(dio);
 });
 
+final notificationsRepositoryProvider =
+    FutureProvider<NotificationsRepository>((ref) async {
+  final dio = await ref.watch(dioProvider.future);
+  return NotificationsRepository(dio);
+});
+
 /// Cached "is the user logged in" check — used by router redirect.
 final currentSessionProvider = FutureProvider<StoredSession?>((ref) async {
   final sessions = ref.watch(sessionStoreProvider);
@@ -111,3 +119,9 @@ final downloadEntriesProvider = ChangeNotifierProvider<DownloadManager>(
 /// first read so SSDP discovery only happens when the user opens the picker.
 final castManagerProvider = ChangeNotifierProvider<CastManager>(
     (ref) => CastManager());
+
+/// Source of the FCM device token. Default is a no-op so the app builds
+/// without Firebase. Override at app startup with a firebase_messaging
+/// implementation once a Firebase project is wired up.
+final pushTokenSourceProvider =
+    Provider<PushTokenSource>((_) => const NoopPushTokenSource());
