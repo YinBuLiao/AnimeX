@@ -161,10 +161,7 @@ class _SubjectCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 3 / 4,
-            child: _Cover(url: subject.coverUrl),
-          ),
+          Expanded(child: _Cover(url: subject.coverUrl)),
           const SizedBox(height: 4),
           Text(
             subject.title,

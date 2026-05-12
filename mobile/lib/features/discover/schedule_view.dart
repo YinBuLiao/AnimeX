@@ -107,10 +107,7 @@ class _ScheduleItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 3 / 4,
-            child: _Cover(url: item.coverUrl),
-          ),
+          Expanded(child: _Cover(url: item.coverUrl)),
           const SizedBox(height: 4),
           Text(
             item.title,

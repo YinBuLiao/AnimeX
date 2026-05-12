@@ -14,7 +14,10 @@ class LibraryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final libAsync = ref.watch(libraryListProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('媒体库')),
+      appBar: AppBar(
+        title: const Text('媒体库'),
+        automaticallyImplyLeading: false,
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(libraryListProvider),
         child: libAsync.when(
@@ -78,8 +81,7 @@ class _Grid extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AspectRatio(
-                aspectRatio: 3 / 4,
+              Expanded(
                 child: (b.coverUrl == null || b.coverUrl!.isEmpty)
                     ? Container(
                         color: Theme.of(context)

@@ -17,7 +17,10 @@ class ProfileTab extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
+      appBar: AppBar(
+        title: const Text('我的'),
+        automaticallyImplyLeading: false,
+      ),
       body: session.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

@@ -10,7 +10,10 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(currentSessionProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('AnimeX')),
+      appBar: AppBar(
+        title: const Text('AnimeX'),
+        automaticallyImplyLeading: false,
+      ),
       body: Center(
         child: session.when(
           loading: () => const CircularProgressIndicator(),

@@ -14,6 +14,7 @@ class DiscoverTab extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('发现'),
+          automaticallyImplyLeading: false,
           bottom: const TabBar(
             tabs: [
               Tab(text: '时间表'),
