@@ -27,4 +27,12 @@ class HistoryRepository {
       throw e.toApi();
     }
   }
+
+  Future<void> clearAll() async {
+    try {
+      await _dio.delete<Map<String, dynamic>>('/api/history');
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
 }

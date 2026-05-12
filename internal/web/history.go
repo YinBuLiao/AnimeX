@@ -157,7 +157,7 @@ func (s Server) historyStore() *historyStore {
 	return newHistoryStore(s.historyRoot())
 }
 
-// handleHistory: GET lists; PUT/POST upserts.
+// handleHistory: GET lists; PUT/POST upserts; DELETE clears for the user.
 func (s Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.authenticatedUser(r)
 	if !ok {
@@ -189,8 +189,26 @@ func (s Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
+	case http.MethodDelete:
+		if err := store.clear(user.Username); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	default:
-		w.Header().Set("Allow", "GET, PUT, POST")
+		w.Header().Set("Allow", "GET, PUT, POST, DELETE")
 		writeError(w, http.StatusMethodNotAllowed, errors.New("请求方法不允许"))
 	}
+}
+
+// clear deletes the per-user history file entirely.
+func (h *historyStore) clear(user string) error {
+	mu := h.lockFor(user)
+	mu.Lock()
+	defer mu.Unlock()
+	err := os.Remove(h.path(user))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }

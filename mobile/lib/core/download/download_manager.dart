@@ -141,6 +141,45 @@ class DownloadManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cancels every queued/running task and deletes every file we know about,
+  /// then resets persisted state. Returns the number of entries removed.
+  Future<int> clearAll() async {
+    final ids = _entries.keys.toList();
+    for (final id in ids) {
+      try {
+        await _dl.cancelTaskWithId(id);
+      } catch (_) {}
+      final e = _entries.remove(id);
+      if (e == null) continue;
+      try {
+        final f = File(e.localPath);
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+    }
+    await _persist();
+    notifyListeners();
+    return ids.length;
+  }
+
+  /// Sums up the size of every completed download. Used by the settings
+  /// page to surface disk usage. Falls back to the persisted totalBytes
+  /// when a file is missing on disk.
+  Future<int> totalDiskBytes() async {
+    var total = 0;
+    for (final e in _entries.values) {
+      if (!e.isComplete) continue;
+      try {
+        final f = File(e.localPath);
+        if (await f.exists()) {
+          total += await f.length();
+          continue;
+        }
+      } catch (_) {}
+      total += e.totalBytes;
+    }
+    return total;
+  }
+
   @override
   void dispose() {
     _sub?.cancel();

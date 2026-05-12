@@ -25,6 +25,13 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('AnimeX'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: '搜索',
+            onPressed: () => context.push('/search'),
+          ),
+        ],
       ),
       body: session.when(
         loading: () => const Center(child: CircularProgressIndicator()),

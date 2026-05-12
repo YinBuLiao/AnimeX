@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -147,8 +148,38 @@ func TestHandleHistoryRejectsUnsupportedMethod(t *testing.T) {
 	token, _, _ := s.Sessions.Create("alice", "user")
 
 	rr := httptest.NewRecorder()
-	s.handleHistory(rr, bearerRequest(http.MethodDelete, "/api/history", token, nil))
+	s.handleHistory(rr, bearerRequest(http.MethodPatch, "/api/history", token, nil))
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", rr.Code)
+	}
+}
+
+func TestHandleHistoryDeleteClearsAll(t *testing.T) {
+	s, _ := newHistoryTestServer(t)
+	token, _, _ := s.Sessions.Create("alice", "user")
+
+	// Seed one entry.
+	body := []byte(`{"file_id":"f1","bangumi_title":"Frieren","position_sec":120,"duration_sec":1440}`)
+	rr := httptest.NewRecorder()
+	s.handleHistory(rr, bearerRequest(http.MethodPut, "/api/history", token, body))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("seed put: got %d", rr.Code)
+	}
+
+	// DELETE.
+	rr = httptest.NewRecorder()
+	s.handleHistory(rr, bearerRequest(http.MethodDelete, "/api/history", token, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("delete: got %d", rr.Code)
+	}
+
+	// GET should now return empty.
+	rr = httptest.NewRecorder()
+	s.handleHistory(rr, bearerRequest(http.MethodGet, "/api/history", token, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("get after delete: got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), `"entries":[]`) {
+		t.Fatalf("expected empty entries, got %s", rr.Body.String())
 	}
 }

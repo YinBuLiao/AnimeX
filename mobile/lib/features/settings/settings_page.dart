@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/download/download_manager.dart';
+import 'package:animex_mobile/data/repositories/history_repository.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -42,6 +44,9 @@ class SettingsPage extends ConsumerWidget {
             trailing: Text('${prefs.defaultVolume.round()}%'),
           ),
           const Divider(height: 1),
+          const _SectionHeader('存储'),
+          const _CacheSection(),
+          const Divider(height: 1),
           const _SectionHeader('其他'),
           ListTile(
             leading: const Icon(Icons.info_outline),
@@ -53,6 +58,139 @@ class SettingsPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CacheSection extends ConsumerStatefulWidget {
+  const _CacheSection();
+
+  @override
+  ConsumerState<_CacheSection> createState() => _CacheSectionState();
+}
+
+class _CacheSectionState extends ConsumerState<_CacheSection> {
+  int? _downloadBytes;
+  bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _scanning = true);
+    final dl = ref.read(downloadManagerProvider);
+    final bytes = await dl.totalDiskBytes();
+    if (mounted) {
+      setState(() {
+        _downloadBytes = bytes;
+        _scanning = false;
+      });
+    }
+  }
+
+  Future<void> _confirmClearDownloads(DownloadManager dl) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('清空所有下载？'),
+        content: const Text('所有已下载的剧集都会被删除，本地缓存空间将被释放。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final count = await dl.clearAll();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已清空 $count 个下载')),
+      );
+    }
+    await _refresh();
+  }
+
+  Future<void> _confirmClearHistory() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('清空观看历史？'),
+        content: const Text('断点续播信息将丢失，下次观看从头开始。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final HistoryRepository repo =
+          await ref.read(historyRepositoryProvider.future);
+      await repo.clearAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已清空观看历史')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('清空失败：$e')),
+        );
+      }
+    }
+  }
+
+  String _formatBytes(int b) {
+    if (b <= 0) return '0 B';
+    if (b > 1 << 30) return '${(b / (1 << 30)).toStringAsFixed(2)} GB';
+    if (b > 1 << 20) return '${(b / (1 << 20)).toStringAsFixed(1)} MB';
+    if (b > 1 << 10) return '${(b / (1 << 10)).toStringAsFixed(0)} KB';
+    return '$b B';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dl = ref.watch(downloadEntriesProvider);
+    final count = dl.entries.where((e) => e.isComplete).length;
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.sd_card_outlined),
+          title: const Text('已下载剧集'),
+          subtitle: _scanning
+              ? const Text('计算中…')
+              : Text('$count 个文件 · ${_formatBytes(_downloadBytes ?? 0)}'),
+          trailing: TextButton(
+            onPressed: count == 0 ? null : () => _confirmClearDownloads(dl),
+            child: const Text('清空'),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.history_outlined),
+          title: const Text('观看历史'),
+          subtitle: const Text('清空后断点续播失效'),
+          trailing: TextButton(
+            onPressed: _confirmClearHistory,
+            child: const Text('清空'),
+          ),
+        ),
+      ],
     );
   }
 }

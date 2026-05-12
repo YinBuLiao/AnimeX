@@ -16,6 +16,7 @@ import 'package:animex_mobile/features/admin/admin_requests_page.dart';
 import 'package:animex_mobile/features/admin/admin_tab.dart';
 import 'package:animex_mobile/features/admin/admin_web_placeholder_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
+import 'package:animex_mobile/features/discover/search_view.dart';
 import 'package:animex_mobile/features/downloads/downloads_page.dart';
 import 'package:animex_mobile/features/history/history_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
@@ -106,6 +107,13 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/settings',
         builder: (_, __) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (_, __) => Scaffold(
+          appBar: AppBar(title: const Text('搜索')),
+          body: const SearchView(),
+        ),
       ),
       GoRoute(
         path: '/admin/overview',
