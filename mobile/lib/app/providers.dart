@@ -5,6 +5,9 @@ import 'package:animex_mobile/core/auth/session_store.dart';
 import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
+import 'package:animex_mobile/data/repositories/discover_repository.dart';
+import 'package:animex_mobile/data/repositories/library_repository.dart';
+import 'package:animex_mobile/data/repositories/subscription_repository.dart';
 import 'package:animex_mobile/data/repositories/system_repository.dart';
 
 /// Injectable factory for [Dio]. Tests override this to supply a Dio with a
@@ -57,6 +60,24 @@ final authRepositoryProvider = FutureProvider<AuthRepository>((ref) async {
   final dio = await ref.watch(dioProvider.future);
   final sessions = ref.watch(sessionStoreProvider);
   return AuthRepository(dio: dio, sessions: sessions);
+});
+
+final discoverRepositoryProvider =
+    FutureProvider<DiscoverRepository>((ref) async {
+  final dio = await ref.watch(dioProvider.future);
+  return DiscoverRepository(dio);
+});
+
+final libraryRepositoryProvider =
+    FutureProvider<LibraryRepository>((ref) async {
+  final dio = await ref.watch(dioProvider.future);
+  return LibraryRepository(dio);
+});
+
+final subscriptionRepositoryProvider =
+    FutureProvider<SubscriptionRepository>((ref) async {
+  final dio = await ref.watch(dioProvider.future);
+  return SubscriptionRepository(dio);
 });
 
 /// Cached "is the user logged in" check — used by router redirect.
