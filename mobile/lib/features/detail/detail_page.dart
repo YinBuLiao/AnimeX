@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
+import 'package:animex_mobile/features/player/player_args.dart';
 
 /// Looks up library entries once per session (heavy call). Detail pages
 /// filter locally by title match.
 final libraryListProvider = FutureProvider<LibraryResponse>((ref) async {
   final repo = await ref.watch(libraryRepositoryProvider.future);
   return repo.library();
+});
+
+/// Cached history list. Detail uses it to seed playback resume positions;
+/// the dedicated HistoryPage subscribes to the same provider.
+final historyListProvider = FutureProvider((ref) async {
+  final repo = await ref.watch(historyRepositoryProvider.future);
+  return repo.list();
 });
 
 class DetailPage extends ConsumerStatefulWidget {
@@ -82,7 +91,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
           Text('剧集', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (matched != null && matched.episodes.isNotEmpty)
-            _EpisodeGrid(bangumi: matched)
+            _EpisodeGrid(bangumi: matched, detailArgs: args)
           else
             _EpisodeEmpty(loading: libraryAsync.isLoading),
           const SizedBox(height: 24),
@@ -174,12 +183,21 @@ class _Hero extends StatelessWidget {
   }
 }
 
-class _EpisodeGrid extends StatelessWidget {
+class _EpisodeGrid extends ConsumerWidget {
   final LibraryBangumi bangumi;
-  const _EpisodeGrid({required this.bangumi});
+  final DetailArgs detailArgs;
+  const _EpisodeGrid({required this.bangumi, required this.detailArgs});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final configAsync = ref.watch(serverConfigProvider);
+    final historyAsync = ref.watch(historyListProvider);
+    final baseUrl = configAsync.maybeWhen(
+      data: (c) => c.baseUrl.trimRight(),
+      orElse: () => '',
+    );
+    final history = historyAsync.asData?.value.entries ?? const [];
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -192,13 +210,41 @@ class _EpisodeGrid extends StatelessWidget {
       itemCount: bangumi.episodes.length,
       itemBuilder: (context, i) {
         final ep = bangumi.episodes[i];
+        final file = ep.files.isEmpty ? null : ep.files.first;
+        final resumeSec = file == null
+            ? 0
+            : history
+                .where((e) => e.fileId == file.id)
+                .map((e) => e.positionSec)
+                .followedBy(const [0])
+                .first;
         return OutlinedButton(
-          onPressed: null, // playback comes in M3
+          onPressed: file == null || baseUrl.isEmpty
+              ? null
+              : () => context.push(
+                    '/player',
+                    extra: PlayerArgs(
+                      url: _absoluteUrl(baseUrl, file.streamUrl),
+                      fileId: file.id,
+                      title: '${bangumi.title} · ${ep.label}',
+                      bangumiTitle: bangumi.title,
+                      episode: ep.label,
+                      coverUrl: bangumi.coverUrl ?? detailArgs.coverUrl,
+                      initialPositionSec: resumeSec,
+                    ),
+                  ),
           child: Text(ep.label, overflow: TextOverflow.ellipsis),
         );
       },
     );
   }
+}
+
+String _absoluteUrl(String base, String path) {
+  if (path.isEmpty) return base;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('/')) return '$base$path';
+  return '$base/$path';
 }
 
 class _EpisodeEmpty extends StatelessWidget {

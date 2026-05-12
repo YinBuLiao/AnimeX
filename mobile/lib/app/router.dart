@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,7 +7,10 @@ import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/features/auth/login_page.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
+import 'package:animex_mobile/features/player/player_args.dart';
+import 'package:animex_mobile/features/player/player_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
+import 'package:animex_mobile/features/history/history_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 import 'package:animex_mobile/features/library/library_tab.dart';
 import 'package:animex_mobile/features/profile/profile_tab.dart';
@@ -58,6 +60,11 @@ GoRouter buildRouter(Ref ref) {
       if (loc == desired) return null;
       // Allow free movement between login <-> setup once both load.
       if (loc == '/setup' && desired == '/login') return null;
+      // Once the user is authenticated (desired='/'), let them stay on any
+      // pushed sub-route (/detail, /player, /history). The redirect only
+      // bounces back to /login or /setup when the user is *not* allowed
+      // anywhere else.
+      if (desired == '/' && loc != '/login' && loc != '/setup') return null;
       return desired;
     },
     routes: [
@@ -93,6 +100,22 @@ GoRouter buildRouter(Ref ref) {
             );
           }
           return DetailPage(args: args);
+        },
+      ),
+      GoRoute(
+        path: '/history',
+        builder: (_, __) => const HistoryPage(),
+      ),
+      GoRoute(
+        path: '/player',
+        builder: (context, state) {
+          final args = state.extra as PlayerArgs?;
+          if (args == null) {
+            return const Scaffold(
+              body: Center(child: Text('缺少播放参数')),
+            );
+          }
+          return PlayerPage(args: args);
         },
       ),
     ],
