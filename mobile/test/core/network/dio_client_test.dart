@@ -80,4 +80,41 @@ void main() {
       expect(api.message, 'nope');
     }
   });
+
+  test('401 on a non-login endpoint fires onUnauthorized callback', () async {
+    var hits = 0;
+    final dio = buildDio(
+      config: const ServerConfig(baseUrl: 'https://server.example'),
+      sessionStore: InMemorySessionStore(),
+      onUnauthorized: () => hits++,
+    );
+    final adapter = DioAdapter(dio: dio);
+    adapter.onGet('/api/auth/me',
+        (s) => s.reply(401, {'ok': false, 'error': 'gone'}));
+    try {
+      await dio.get('/api/auth/me');
+    } on DioException catch (_) {
+      // expected
+    }
+    expect(hits, 1);
+  });
+
+  test('401 from mobile-login does NOT fire onUnauthorized', () async {
+    var hits = 0;
+    final dio = buildDio(
+      config: const ServerConfig(baseUrl: 'https://server.example'),
+      sessionStore: InMemorySessionStore(),
+      onUnauthorized: () => hits++,
+    );
+    final adapter = DioAdapter(dio: dio);
+    adapter.onPost('/api/auth/mobile-login',
+        (s) => s.reply(401, {'ok': false, 'error': 'bad password'}));
+    try {
+      await dio.post('/api/auth/mobile-login',
+          data: {'username': 'x', 'password': 'y'});
+    } on DioException catch (_) {
+      // expected
+    }
+    expect(hits, 0);
+  });
 }

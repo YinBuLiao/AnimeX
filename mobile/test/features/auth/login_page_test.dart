@@ -20,7 +20,12 @@ Widget _harness({
       serverConfigStoreProvider.overrideWithValue(configStore),
       sessionStoreProvider.overrideWithValue(sessions),
       dioBuilderProvider.overrideWithValue(
-        ({required ServerConfig config, required SessionStore sessionStore}) => dio,
+        ({
+          required ServerConfig config,
+          required SessionStore sessionStore,
+          OnUnauthorized? onUnauthorized,
+        }) =>
+            dio,
       ),
     ],
     child: const MaterialApp(home: LoginPage()),

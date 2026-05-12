@@ -21,7 +21,12 @@ Widget _harness({
       sessionStoreProvider.overrideWithValue(InMemorySessionStore()),
       // Override dio builder so health probe hits the mocked Dio
       dioBuilderProvider.overrideWithValue(
-        ({required ServerConfig config, required SessionStore sessionStore}) => dio,
+        ({
+          required ServerConfig config,
+          required SessionStore sessionStore,
+          OnUnauthorized? onUnauthorized,
+        }) =>
+            dio,
       ),
     ],
     child: MaterialApp(home: child),

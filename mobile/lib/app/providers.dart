@@ -12,6 +12,7 @@ import 'package:animex_mobile/data/repositories/system_repository.dart';
 typedef DioBuilder = Dio Function({
   required ServerConfig config,
   required SessionStore sessionStore,
+  OnUnauthorized? onUnauthorized,
 });
 
 final dioBuilderProvider = Provider<DioBuilder>((_) => buildDio);
@@ -34,7 +35,17 @@ final dioProvider = FutureProvider<Dio>((ref) async {
   final config = await ref.watch(serverConfigProvider.future);
   final sessions = ref.watch(sessionStoreProvider);
   final builder = ref.watch(dioBuilderProvider);
-  return builder(config: config, sessionStore: sessions);
+  return builder(
+    config: config,
+    sessionStore: sessions,
+    onUnauthorized: () {
+      // Fire-and-forget: drop the stored token so future calls don't keep
+      // sending it, then invalidate the session provider so the router
+      // refresh listener bounces the user to /login.
+      sessions.clear();
+      ref.invalidate(currentSessionProvider);
+    },
+  );
 });
 
 final systemRepositoryProvider = FutureProvider<SystemRepository>((ref) async {
