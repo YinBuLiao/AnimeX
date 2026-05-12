@@ -58,9 +58,12 @@ class _AnimeXAppState extends ConsumerState<AnimeXApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(appPreferencesProvider).themeMode;
     return MaterialApp.router(
       title: 'AnimeX',
-      theme: animexDarkTheme(),
+      theme: animexLightTheme(),
+      darkTheme: animexDarkTheme(),
+      themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

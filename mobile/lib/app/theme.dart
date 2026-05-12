@@ -4,6 +4,24 @@ const _bg = Color(0xFF0F1014);
 const _card = Color(0xFF1A1B22);
 const _accent = Color(0xFFFF6B3D); // saturated orange-red
 
+ThemeData animexLightTheme() {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: _accent,
+    brightness: Brightness.light,
+  );
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorScheme: scheme,
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    ),
+  );
+}
+
 ThemeData animexDarkTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: _accent,

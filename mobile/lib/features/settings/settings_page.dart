@@ -44,6 +44,14 @@ class SettingsPage extends ConsumerWidget {
             trailing: Text('${prefs.defaultVolume.round()}%'),
           ),
           const Divider(height: 1),
+          const _SectionHeader('外观'),
+          ListTile(
+            leading: const Icon(Icons.brightness_6_outlined),
+            title: const Text('主题'),
+            subtitle: Text(_themeLabel(prefs.themeMode)),
+            onTap: () => _pickTheme(context, ref),
+          ),
+          const Divider(height: 1),
           const _SectionHeader('存储'),
           const _CacheSection(),
           const Divider(height: 1),
@@ -60,6 +68,46 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _themeLabel(ThemeMode m) {
+  switch (m) {
+    case ThemeMode.system:
+      return '跟随系统';
+    case ThemeMode.light:
+      return '浅色';
+    case ThemeMode.dark:
+      return '深色';
+  }
+}
+
+Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
+  final prefs = ref.read(appPreferencesProvider);
+  final current = prefs.themeMode;
+  final picked = await showModalBottomSheet<ThemeMode>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final m in ThemeMode.values)
+            ListTile(
+              leading: Icon(
+                m == current
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                color: m == current
+                    ? Theme.of(ctx).colorScheme.primary
+                    : null,
+              ),
+              title: Text(_themeLabel(m)),
+              onTap: () => Navigator.of(ctx).pop(m),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (picked != null) await prefs.setThemeMode(picked);
 }
 
 class _CacheSection extends ConsumerStatefulWidget {

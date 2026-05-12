@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum LibrarySort {
@@ -25,6 +26,7 @@ class AppPreferences extends ChangeNotifier {
   static const _kDefaultVolume = 'animex.pref.defaultVolume';
   static const _kPreferHighQuality = 'animex.pref.preferHighQuality';
   static const _kLibrarySort = 'animex.pref.librarySort';
+  static const _kThemeMode = 'animex.pref.themeMode';
 
   final SharedPreferences _prefs;
 
@@ -32,6 +34,7 @@ class AppPreferences extends ChangeNotifier {
   double _defaultVolume;
   bool _preferHighQuality;
   LibrarySort _librarySort;
+  ThemeMode _themeMode;
 
   AppPreferences._(this._prefs)
       : _autoPlayNext = _prefs.getBool(_kAutoPlayNext) ?? true,
@@ -40,6 +43,10 @@ class AppPreferences extends ChangeNotifier {
         _librarySort = LibrarySort.values.firstWhere(
           (s) => s.name == _prefs.getString(_kLibrarySort),
           orElse: () => LibrarySort.recentlyWatched,
+        ),
+        _themeMode = ThemeMode.values.firstWhere(
+          (m) => m.name == _prefs.getString(_kThemeMode),
+          orElse: () => ThemeMode.dark,
         );
 
   static Future<AppPreferences> load() async {
@@ -51,6 +58,7 @@ class AppPreferences extends ChangeNotifier {
   double get defaultVolume => _defaultVolume;
   bool get preferHighQuality => _preferHighQuality;
   LibrarySort get librarySort => _librarySort;
+  ThemeMode get themeMode => _themeMode;
 
   Future<void> setAutoPlayNext(bool v) async {
     _autoPlayNext = v;
@@ -73,6 +81,12 @@ class AppPreferences extends ChangeNotifier {
   Future<void> setLibrarySort(LibrarySort v) async {
     _librarySort = v;
     await _prefs.setString(_kLibrarySort, v.name);
+    notifyListeners();
+  }
+
+  Future<void> setThemeMode(ThemeMode v) async {
+    _themeMode = v;
+    await _prefs.setString(_kThemeMode, v.name);
     notifyListeners();
   }
 }
