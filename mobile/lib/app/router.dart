@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +8,15 @@ import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/features/auth/login_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 import 'package:animex_mobile/features/server_setup/server_setup_page.dart';
+
+class _RouterRefresh extends ChangeNotifier {
+  _RouterRefresh(Ref ref) {
+    ref.listen<AsyncValue<ServerConfig>>(serverConfigProvider,
+        (_, __) => notifyListeners());
+    ref.listen<AsyncValue<StoredSession?>>(currentSessionProvider,
+        (_, __) => notifyListeners());
+  }
+}
 
 String decideStartRoute({
   required ServerConfig config,
@@ -18,15 +28,18 @@ String decideStartRoute({
 }
 
 GoRouter buildRouter(Ref ref) {
+  final refresh = _RouterRefresh(ref);
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: refresh,
     redirect: (context, state) {
       final configAsync = ref.read(serverConfigProvider);
       final sessionAsync = ref.read(currentSessionProvider);
       final config = configAsync.asData?.value;
       final session = sessionAsync.asData?.value;
       // While initial data still loading, stay where we are.
-      if (config == null || sessionAsync.isLoading) return null;
+      if (configAsync.isLoading || sessionAsync.isLoading) return null;
+      if (config == null) return null;
 
       final desired = decideStartRoute(config: config, session: session);
       final loc = state.matchedLocation;
