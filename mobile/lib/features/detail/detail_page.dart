@@ -83,7 +83,14 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text(args.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(libraryListProvider);
+          ref.invalidate(historyListProvider);
+          ref.invalidate(downloadEntriesProvider);
+          await ref.read(libraryListProvider.future);
+        },
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _Hero(args: args),
@@ -126,6 +133,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
               ),
             ),
         ],
+      ),
       ),
     );
   }
