@@ -27,6 +27,7 @@ class AppPreferences extends ChangeNotifier {
   static const _kPreferHighQuality = 'animex.pref.preferHighQuality';
   static const _kLibrarySort = 'animex.pref.librarySort';
   static const _kThemeMode = 'animex.pref.themeMode';
+  static const _kEpisodeSortDescending = 'animex.pref.episodeSortDescending';
 
   final SharedPreferences _prefs;
 
@@ -35,6 +36,7 @@ class AppPreferences extends ChangeNotifier {
   bool _preferHighQuality;
   LibrarySort _librarySort;
   ThemeMode _themeMode;
+  bool _episodeSortDescending;
 
   AppPreferences._(this._prefs)
       : _autoPlayNext = _prefs.getBool(_kAutoPlayNext) ?? true,
@@ -47,7 +49,9 @@ class AppPreferences extends ChangeNotifier {
         _themeMode = ThemeMode.values.firstWhere(
           (m) => m.name == _prefs.getString(_kThemeMode),
           orElse: () => ThemeMode.dark,
-        );
+        ),
+        _episodeSortDescending =
+            _prefs.getBool(_kEpisodeSortDescending) ?? false;
 
   static Future<AppPreferences> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -59,6 +63,7 @@ class AppPreferences extends ChangeNotifier {
   bool get preferHighQuality => _preferHighQuality;
   LibrarySort get librarySort => _librarySort;
   ThemeMode get themeMode => _themeMode;
+  bool get episodeSortDescending => _episodeSortDescending;
 
   Future<void> setAutoPlayNext(bool v) async {
     _autoPlayNext = v;
@@ -87,6 +92,12 @@ class AppPreferences extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode v) async {
     _themeMode = v;
     await _prefs.setString(_kThemeMode, v.name);
+    notifyListeners();
+  }
+
+  Future<void> setEpisodeSortDescending(bool v) async {
+    _episodeSortDescending = v;
+    await _prefs.setBool(_kEpisodeSortDescending, v);
     notifyListeners();
   }
 }

@@ -117,7 +117,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
           if (args.summary != null && args.summary!.isNotEmpty)
             Text(args.summary!, style: const TextStyle(height: 1.5)),
           const SizedBox(height: 20),
-          Text('剧集', style: Theme.of(context).textTheme.titleMedium),
+          _EpisodesHeader(hasEpisodes: matched?.episodes.isNotEmpty ?? false),
           const SizedBox(height: 8),
           if (matched != null && matched.episodes.isNotEmpty)
             _EpisodeGrid(bangumi: matched, detailArgs: args)
@@ -208,6 +208,33 @@ class _Hero extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _EpisodesHeader extends ConsumerWidget {
+  final bool hasEpisodes;
+  const _EpisodesHeader({required this.hasEpisodes});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(appPreferencesProvider);
+    return Row(
+      children: [
+        Text('剧集', style: Theme.of(context).textTheme.titleMedium),
+        const Spacer(),
+        if (hasEpisodes)
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(prefs.episodeSortDescending
+                ? Icons.arrow_downward
+                : Icons.arrow_upward),
+            tooltip:
+                prefs.episodeSortDescending ? '降序（最新在前）' : '升序（EP1 在前）',
+            onPressed: () =>
+                prefs.setEpisodeSortDescending(!prefs.episodeSortDescending),
+          ),
       ],
     );
   }
@@ -316,11 +343,15 @@ class _EpisodeGrid extends ConsumerWidget {
     final configAsync = ref.watch(serverConfigProvider);
     final historyAsync = ref.watch(historyListProvider);
     final downloads = ref.watch(downloadEntriesProvider);
+    final descending = ref.watch(appPreferencesProvider).episodeSortDescending;
     final baseUrl = configAsync.maybeWhen(
       data: (c) => c.baseUrl.trimRight(),
       orElse: () => '',
     );
     final history = historyAsync.asData?.value.entries ?? const [];
+    final episodes = descending
+        ? bangumi.episodes.reversed.toList()
+        : bangumi.episodes;
 
     return GridView.builder(
       shrinkWrap: true,
@@ -331,9 +362,9 @@ class _EpisodeGrid extends ConsumerWidget {
         mainAxisSpacing: 8,
         childAspectRatio: 1.4,
       ),
-      itemCount: bangumi.episodes.length,
+      itemCount: episodes.length,
       itemBuilder: (context, i) {
-        final ep = bangumi.episodes[i];
+        final ep = episodes[i];
         final file = ep.files.isEmpty ? null : ep.files.first;
         final hist = file == null
             ? null
