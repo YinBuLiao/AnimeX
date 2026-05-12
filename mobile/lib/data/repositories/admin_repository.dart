@@ -71,4 +71,87 @@ class AdminRepository {
       throw e.toApi();
     }
   }
+
+  Future<List<AdminUser>> listUsers() async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>('/api/users');
+      return (resp.data?['users'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminUser.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  /// Creates or updates a user. role is 'admin' or 'user'. Password is
+  /// required for new users; for existing users it overwrites if non-empty.
+  Future<void> saveUser({
+    required String username,
+    required String password,
+    required String role,
+  }) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/users',
+        data: {
+          'username': username,
+          'password': password,
+          'role': role,
+        },
+      );
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  Future<List<AdminInviteCode>> listInviteCodes() async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>(
+          '/api/admin/invite-codes');
+      return (resp.data?['codes'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminInviteCode.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  Future<List<AdminInviteCode>> generateInviteCodes({
+    int count = 1,
+    String? expiresAt,
+  }) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/api/admin/invite-codes',
+        data: {
+          'count': count,
+          if (expiresAt != null && expiresAt.isNotEmpty)
+            'expires_at': expiresAt,
+        },
+      );
+      return (resp.data?['codes'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminInviteCode.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
+  Future<List<AdminInviteCode>> deleteInviteCodes(List<String> codes) async {
+    try {
+      final resp = await _dio.delete<Map<String, dynamic>>(
+        '/api/admin/invite-codes',
+        data: {'codes': codes},
+      );
+      return (resp.data?['codes'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminInviteCode.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
 }

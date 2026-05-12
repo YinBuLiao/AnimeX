@@ -145,3 +145,47 @@ class AdminDownloadRequest {
     );
   }
 }
+
+class AdminUser {
+  final String username;
+  final String role;
+
+  const AdminUser({required this.username, required this.role});
+
+  bool get isAdmin => role == 'admin';
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) {
+    return AdminUser(
+      username: (json['username'] ?? '').toString(),
+      role: (json['role'] ?? 'user').toString(),
+    );
+  }
+}
+
+class AdminInviteCode {
+  final String code;
+  final String usedBy;
+  final String usedAt;
+  final String expiresAt;
+  final String createdAt;
+
+  const AdminInviteCode({
+    required this.code,
+    required this.usedBy,
+    required this.usedAt,
+    required this.expiresAt,
+    required this.createdAt,
+  });
+
+  bool get isUsed => usedBy.isNotEmpty;
+
+  factory AdminInviteCode.fromJson(Map<String, dynamic> json) {
+    return AdminInviteCode(
+      code: (json['code'] ?? '').toString(),
+      usedBy: (json['used_by'] ?? '').toString(),
+      usedAt: (json['used_at'] ?? '').toString(),
+      expiresAt: (json['expires_at'] ?? '').toString(),
+      createdAt: (json['created_at'] ?? '').toString(),
+    );
+  }
+}

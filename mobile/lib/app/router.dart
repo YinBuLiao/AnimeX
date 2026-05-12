@@ -9,11 +9,13 @@ import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_page.dart';
+import 'package:animex_mobile/features/admin/admin_invite_codes_page.dart';
 import 'package:animex_mobile/features/admin/admin_logs_page.dart';
 import 'package:animex_mobile/features/admin/admin_monitor_page.dart';
 import 'package:animex_mobile/features/admin/admin_overview_page.dart';
 import 'package:animex_mobile/features/admin/admin_requests_page.dart';
 import 'package:animex_mobile/features/admin/admin_tab.dart';
+import 'package:animex_mobile/features/admin/admin_users_page.dart';
 import 'package:animex_mobile/features/admin/admin_web_placeholder_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
 import 'package:animex_mobile/features/discover/search_view.dart';
@@ -22,6 +24,7 @@ import 'package:animex_mobile/features/history/history_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 import 'package:animex_mobile/features/library/library_tab.dart';
 import 'package:animex_mobile/features/notifications/notifications_page.dart';
+import 'package:animex_mobile/features/profile/change_password_page.dart';
 import 'package:animex_mobile/features/profile/profile_tab.dart';
 import 'package:animex_mobile/features/server_setup/server_setup_page.dart';
 import 'package:animex_mobile/features/settings/settings_page.dart';
@@ -109,6 +112,10 @@ GoRouter buildRouter(Ref ref) {
         builder: (_, __) => const SettingsPage(),
       ),
       GoRoute(
+        path: '/profile/password',
+        builder: (_, __) => const ChangePasswordPage(),
+      ),
+      GoRoute(
         path: '/search',
         builder: (_, __) => Scaffold(
           appBar: AppBar(title: const Text('搜索')),
@@ -132,18 +139,12 @@ GoRouter buildRouter(Ref ref) {
         builder: (_, __) => const AdminLogsPage(),
       ),
       GoRoute(
-        path: '/admin/web/users',
-        builder: (_, __) => const AdminWebPlaceholderPage(
-          title: '用户管理',
-          webPath: '/admin#users',
-        ),
+        path: '/admin/users',
+        builder: (_, __) => const AdminUsersPage(),
       ),
       GoRoute(
-        path: '/admin/web/invite-codes',
-        builder: (_, __) => const AdminWebPlaceholderPage(
-          title: '邀请码',
-          webPath: '/admin#invites',
-        ),
+        path: '/admin/invite-codes',
+        builder: (_, __) => const AdminInviteCodesPage(),
       ),
       GoRoute(
         path: '/admin/web/anime',

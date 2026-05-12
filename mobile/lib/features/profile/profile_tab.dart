@@ -197,8 +197,9 @@ class ProfileTab extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.password_outlined),
                 title: const Text('修改密码'),
-                subtitle: const Text('请前往 Web 管理面板'),
-                enabled: false,
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () =>
+                    GoRouter.of(context).push('/profile/password'),
               ),
               const Divider(height: 1),
               ListTile(

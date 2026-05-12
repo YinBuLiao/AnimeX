@@ -40,6 +40,26 @@ class AuthRepository {
     }
   }
 
+  /// POST /api/auth/password. Server clears the session cookie after a
+  /// successful change so the caller is expected to re-login.
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/auth/password',
+        data: {
+          'old_password': oldPassword,
+          'new_password': newPassword,
+          'confirm_password': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post('/api/auth/logout');

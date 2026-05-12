@@ -32,14 +32,14 @@ class AdminTab extends StatelessWidget {
     _Entry(
       icon: Icons.people_outline,
       title: '用户管理',
-      subtitle: '只读，编辑请前往 Web 管理面板',
-      route: '/admin/web/users',
+      subtitle: '新建用户 / 改密码 / 调整角色',
+      route: '/admin/users',
     ),
     _Entry(
       icon: Icons.confirmation_number_outlined,
       title: '邀请码',
-      subtitle: '只读，编辑请前往 Web 管理面板',
-      route: '/admin/web/invite-codes',
+      subtitle: '生成 / 删除 / 复制邀请码',
+      route: '/admin/invite-codes',
     ),
     _Entry(
       icon: Icons.tv_outlined,
