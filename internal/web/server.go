@@ -2249,11 +2249,21 @@ func (s Server) adminOnlyAPI(r *http.Request) bool {
 }
 
 func (s Server) authenticatedUser(r *http.Request) (config.User, bool) {
-	cookie, err := r.Cookie(authCookieName)
-	if err != nil {
-		return config.User{}, false
+	if cookie, err := r.Cookie(authCookieName); err == nil {
+		if user, ok := s.Sessions.User(cookie.Value); ok {
+			return user, true
+		}
 	}
-	return s.Sessions.User(cookie.Value)
+	if header := r.Header.Get("Authorization"); header != "" {
+		const prefix = "Bearer "
+		if len(header) > len(prefix) && strings.EqualFold(header[:len(prefix)], prefix) {
+			token := strings.TrimSpace(header[len(prefix):])
+			if user, ok := s.Sessions.User(token); ok {
+				return user, true
+			}
+		}
+	}
+	return config.User{}, false
 }
 
 func (s Server) authenticatedUsername(r *http.Request) (string, bool) {
