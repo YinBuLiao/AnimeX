@@ -26,7 +26,7 @@ import (
 	"bangumi-pikpak/internal/web"
 )
 
-const appVersion = "dev"
+var appVersion = "dev"
 
 func main() {
 	configDBPath := flag.String("configdb", config.DefaultLocalDBPath, "path to local SQLite config database")

@@ -9,7 +9,7 @@ import (
 )
 
 func TestHandleHealthReturnsVersion(t *testing.T) {
-	s := Server{Version: "test-v1"} // LocalDB nil => installed=false
+	s := Server{Version: "test-v1", Runtime: nil} // Runtime nil => installed=false
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rr := httptest.NewRecorder()
 	s.handleHealth(rr, req)
@@ -32,7 +32,31 @@ func TestHandleHealthReturnsVersion(t *testing.T) {
 		t.Fatalf("bad body: %+v", body)
 	}
 	if body.Installed {
-		t.Fatalf("expected installed=false when LocalDB is nil; got true")
+		t.Fatalf("expected installed=false when Runtime is nil; got true")
+	}
+}
+
+func TestHandleHealthReturnsInstalledTrue(t *testing.T) {
+	s := Server{
+		Version: "test-v1",
+		Runtime: &RuntimeState{Installed: true},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rr := httptest.NewRecorder()
+	s.handleHealth(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var body struct {
+		OK        bool `json:"ok"`
+		Installed bool `json:"installed"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !body.OK || !body.Installed {
+		t.Fatalf("expected installed=true; got %+v", body)
 	}
 }
 
