@@ -34,6 +34,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _completedSub;
+  StreamSubscription<double>? _rateSub;
+  double _rate = 1.0;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _playing = false;
@@ -70,6 +72,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     });
     _completedSub = _player.stream.completed.listen((done) {
       if (done) _onPlaybackEnded();
+    });
+    _rateSub = _player.stream.rate.listen((r) {
+      if (mounted) setState(() => _rate = r);
     });
     _resetControlsTimer();
 
@@ -191,6 +196,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _durationSub?.cancel();
     _playingSub?.cancel();
     _completedSub?.cancel();
+    _rateSub?.cancel();
     _player.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -224,6 +230,43 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         onPick: _jumpToEpisode,
       ),
     );
+  }
+
+  Future<void> _pickRate() async {
+    const options = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    final picked = await showModalBottomSheet<double>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text('播放速度',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+            const Divider(height: 1),
+            for (final v in options)
+              ListTile(
+                leading: Icon(
+                  (v - _rate).abs() < 0.01
+                      ? Icons.check_circle
+                      : Icons.speed_outlined,
+                  color: (v - _rate).abs() < 0.01
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                title: Text('${v}x'),
+                onTap: () => Navigator.of(context).pop(v),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) {
+      await _player.setRate(picked);
+    }
   }
 
   Future<void> _jumpToEpisode(int newIndex) async {
@@ -308,6 +351,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   onCast: _openCastPicker,
                   onEpisodes:
                       _args.playlist.length > 1 ? _openEpisodePicker : null,
+                  rate: _rate,
+                  onPickRate: _pickRate,
                 ),
               ),
             ),
@@ -427,6 +472,8 @@ class _PlayerChrome extends StatelessWidget {
   final VoidCallback onPip;
   final VoidCallback onCast;
   final VoidCallback? onEpisodes;
+  final double rate;
+  final VoidCallback onPickRate;
 
   const _PlayerChrome({
     required this.title,
@@ -439,6 +486,8 @@ class _PlayerChrome extends StatelessWidget {
     required this.onSeek,
     required this.onPip,
     required this.onCast,
+    required this.rate,
+    required this.onPickRate,
     this.onEpisodes,
   });
 
@@ -556,7 +605,20 @@ class _PlayerChrome extends StatelessWidget {
                     _fmt(duration),
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
-                  const SizedBox(width: 4),
+                  TextButton(
+                    onPressed: onPickRate,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(48, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                    child: Text(
+                      rate == 1.0
+                          ? '倍速'
+                          : '${rate.toStringAsFixed(rate == rate.toInt() ? 0 : 2)}x',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
                 ],
               ),
             ],
