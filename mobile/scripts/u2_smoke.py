@@ -63,11 +63,16 @@ def wait_idle(d: u2.Device, seconds: float = 1.5) -> None:
 
 
 def fraction_tap(d: u2.Device, fx: float, fy: float) -> None:
-    """Tap at fraction (fx,fy) of the screen. Coordinates 0..1."""
+    """Tap at fraction (fx,fy) of the screen. Coordinates 0..1.
+
+    Uses `adb shell input tap` rather than u2's d.click(), which sometimes
+    sends an event that Flutter's GestureDetector silently drops on this
+    emulator build. `input tap` injects the raw motion events.
+    """
     w, h = d.window_size()
     x, y = int(w * fx), int(h * fy)
     print(f"  tap ({x},{y})  [fraction {fx:.2f},{fy:.2f}]  size={w}x{h}")
-    d.click(x, y)
+    d.shell(f"input tap {x} {y}")
 
 
 def type_text(d: u2.Device, text: str) -> None:
@@ -127,52 +132,53 @@ def main() -> int:
     snap(d, "01_after_launch")
 
     print(f"[4/8] type server URL ({args.server_url})")
-    # ServerSetupPage layout (Flutter): label "服务器地址" then the TextField
-    # then a checkbox then the "测试连接" button. On a 1080x2340 screen the
-    # field interior is ~y=440-490 (fraction 0.19) and the button center is
-    # ~y=662 (fraction 0.28).
-    fraction_tap(d, 0.5, 0.19)
+    # ServerSetupPage layout (Flutter) on 1080x2340. Measured from a real
+    # screencap: TextField interior ~y=444-597 (center fraction ~0.22);
+    # 测试连接 button ~y=833-942 (center fraction ~0.38); the "下一步：登录"
+    # tonal button (only when installed=true) sits ~y=1100-1200 → ~0.50.
+    fraction_tap(d, 0.5, 0.22)
     wait_idle(d)
     d.send_keys(args.server_url)
     wait_idle(d)
     snap(d, "02_url_typed")
 
     print("[5/8] tap 测试连接")
-    fraction_tap(d, 0.5, 0.33)
+    fraction_tap(d, 0.5, 0.38)
     wait_idle(d, 4)  # health probe + state update
     snap(d, "03_health_probe")
 
     print("[6/8] tap 下一步：登录 (only present if installed=true)")
-    # When installed=true a tonal "下一步：登录" button appears below the result
-    # banner — about fraction 0.46. If installed=false this tap is a no-op.
-    fraction_tap(d, 0.5, 0.46)
+    fraction_tap(d, 0.5, 0.50)
     wait_idle(d, 2)
     snap(d, "04_login_screen")
 
     print("[7/8] fill credentials")
-    # Username field is the first text field on /login; approx (0.5, 0.20)
-    fraction_tap(d, 0.5, 0.20)
+    # LoginPage layout on 1080x2340 (measured from screencap):
+    #   用户名 TextField box  ~y=339-485  center fraction 0.176
+    #   密码 TextField box     ~y=549-696  center fraction 0.266
+    #   登录 FilledButton      ~y=766-913  center fraction 0.359
+    fraction_tap(d, 0.5, 0.18)
     wait_idle(d)
     d.send_keys(args.username)
     wait_idle(d, 0.5)
-    # Password field is right below; approx (0.5, 0.30)
-    fraction_tap(d, 0.5, 0.30)
+    fraction_tap(d, 0.5, 0.27)
     wait_idle(d)
     d.send_keys(args.password)
     wait_idle(d, 0.5)
     snap(d, "05_credentials_filled")
 
-    # Hide keyboard, tap 登录 button (~0.5, 0.42)
-    d.press("back")
-    wait_idle(d, 0.5)
-    fraction_tap(d, 0.5, 0.42)
+    # NOTE: don't press("back") to hide the IME — on a Flutter root route
+    # that exits the whole app. send_keys at this point already leaves the
+    # keyboard collapsed, so the button is visible.
+    fraction_tap(d, 0.5, 0.36)
     wait_idle(d, 3)
     snap(d, "06_after_login")
 
     print("[8/8] tap 退出登录 on home")
-    # Logout button is centered-ish below the M1 placeholder text;
-    # approx (0.5, 0.62)
-    fraction_tap(d, 0.5, 0.62)
+    # HomePage Column is centered. Once steady-state (no animation):
+    #   "欢迎，X" ~y=1090, "角色：…" ~y=1180, "M1 完成…" ~y=1310,
+    #   TextButton 退出登录 ~y=1463, fraction ≈0.625.
+    fraction_tap(d, 0.5, 0.625)
     wait_idle(d, 2)
     snap(d, "07_after_logout")
 
