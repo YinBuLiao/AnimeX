@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
@@ -291,10 +292,20 @@ class AboutPage extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 4),
-            Text(
-              '0.1.0',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Theme.of(context).colorScheme.outline),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (_, snap) {
+                final info = snap.data;
+                final label = info == null
+                    ? '…'
+                    : 'v${info.version} (${info.buildNumber})';
+                return Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.outline),
+                );
+              },
             ),
             const SizedBox(height: 32),
             Text(

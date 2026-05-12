@@ -26,6 +26,7 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences: ^2.3.3
   screen_brightness: ^2.1.2
+  package_info_plus: ^8.1.1
 
 dev_dependencies:
   flutter_test:
