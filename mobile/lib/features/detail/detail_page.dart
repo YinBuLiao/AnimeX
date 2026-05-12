@@ -1,0 +1,225 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/network/api_exception.dart';
+import 'package:animex_mobile/data/dtos/library_bangumi.dart';
+import 'package:animex_mobile/features/detail/detail_args.dart';
+
+/// Looks up library entries once per session (heavy call). Detail pages
+/// filter locally by title match.
+final libraryListProvider = FutureProvider<LibraryResponse>((ref) async {
+  final repo = await ref.watch(libraryRepositoryProvider.future);
+  return repo.library();
+});
+
+class DetailPage extends ConsumerStatefulWidget {
+  final DetailArgs args;
+  const DetailPage({super.key, required this.args});
+
+  @override
+  ConsumerState<DetailPage> createState() => _DetailPageState();
+}
+
+class _DetailPageState extends ConsumerState<DetailPage> {
+  bool _subscribing = false;
+  String? _subscribeMsg;
+  bool _subscribeOk = false;
+
+  Future<void> _subscribe() async {
+    setState(() {
+      _subscribing = true;
+      _subscribeMsg = null;
+    });
+    try {
+      final repo = await ref.read(subscriptionRepositoryProvider.future);
+      await repo.subscribe(
+        title: widget.args.title,
+        subjectId: widget.args.subjectId,
+        coverUrl: widget.args.coverUrl,
+        summary: widget.args.summary,
+      );
+      setState(() {
+        _subscribeOk = true;
+        _subscribeMsg = '订阅成功';
+        _subscribing = false;
+      });
+    } on ApiException catch (e) {
+      setState(() {
+        _subscribeMsg = e.message;
+        _subscribing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _subscribeMsg = '$e';
+        _subscribing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final args = widget.args;
+    final libraryAsync = ref.watch(libraryListProvider);
+    final matched = libraryAsync.maybeWhen(
+      data: (lib) => lib.bangumi
+          .where((b) => b.title == args.title)
+          .cast<LibraryBangumi?>()
+          .firstWhere((_) => true, orElse: () => null),
+      orElse: () => null,
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: Text(args.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _Hero(args: args),
+          const SizedBox(height: 16),
+          if (args.summary != null && args.summary!.isNotEmpty)
+            Text(args.summary!, style: const TextStyle(height: 1.5)),
+          const SizedBox(height: 20),
+          Text('剧集', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (matched != null && matched.episodes.isNotEmpty)
+            _EpisodeGrid(bangumi: matched)
+          else
+            _EpisodeEmpty(loading: libraryAsync.isLoading),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: (_subscribing || _subscribeOk) ? null : _subscribe,
+            icon: _subscribing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(_subscribeOk ? Icons.check : Icons.bookmark_add_outlined),
+            label: Text(_subscribeOk ? '已订阅' : '订阅'),
+          ),
+          if (_subscribeMsg != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _subscribeMsg!,
+                style: TextStyle(
+                  color: _subscribeOk
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
+  final DetailArgs args;
+  const _Hero({required this.args});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          height: 160,
+          child: (args.coverUrl == null || args.coverUrl!.isEmpty)
+              ? Container(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Icon(Icons.image_not_supported_outlined),
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    args.coverUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.broken_image_outlined),
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(args.title,
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (args.score > 0)
+                Text('★ ${args.score.toStringAsFixed(1)}',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary)),
+              if (args.meta != null && args.meta!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    args.meta!,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EpisodeGrid extends StatelessWidget {
+  final LibraryBangumi bangumi;
+  const _EpisodeGrid({required this.bangumi});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 64,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.4,
+      ),
+      itemCount: bangumi.episodes.length,
+      itemBuilder: (context, i) {
+        final ep = bangumi.episodes[i];
+        return OutlinedButton(
+          onPressed: null, // playback comes in M3
+          child: Text(ep.label, overflow: TextOverflow.ellipsis),
+        );
+      },
+    );
+  }
+}
+
+class _EpisodeEmpty extends StatelessWidget {
+  final bool loading;
+  const _EpisodeEmpty({required this.loading});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: loading
+            ? const CircularProgressIndicator()
+            : const Text(
+                '暂无剧集，订阅后会自动下载到媒体库',
+                textAlign: TextAlign.center,
+              ),
+      ),
+    );
+  }
+}

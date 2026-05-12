@@ -7,7 +7,9 @@ import 'package:animex_mobile/core/auth/session_store.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 
 void main() {
-  testWidgets('home shows the logged-in username and logout button', (tester) async {
+  testWidgets('home shows the logged-in username (M2: no logout button)',
+      (tester) async {
+    // M2: logout moved to ProfileTab. HomeTab is welcome-only.
     final sessions = InMemorySessionStore();
     await sessions.save(const StoredSession(
         token: 'tok', username: 'alice', role: 'admin', expiresAtSec: 0));
@@ -19,7 +21,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.textContaining('alice'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '退出登录'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '退出登录'), findsNothing);
   });
 
   testWidgets('home shows "未登录" when no session is stored', (tester) async {
