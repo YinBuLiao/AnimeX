@@ -133,6 +133,26 @@ class ProfileTab extends ConsumerWidget {
                       TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 onTap: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('退出登录？'),
+                      content: const Text(
+                          '退出后需要重新登录才能继续观看；已下载的离线视频会保留。'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('取消'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          child: const Text('退出'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                  if (!context.mounted) return;
                   final router = GoRouter.of(context);
                   final repo =
                       await ref.read(authRepositoryProvider.future);
