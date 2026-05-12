@@ -21,9 +21,12 @@ class _RouterRefresh extends ChangeNotifier {
 String decideStartRoute({
   required ServerConfig config,
   required StoredSession? session,
+  DateTime Function()? clock,
 }) {
   if (!config.isComplete) return '/setup';
   if (session == null || session.token.isEmpty) return '/login';
+  final now = (clock ?? DateTime.now)().millisecondsSinceEpoch ~/ 1000;
+  if (session.expiresAtSec > 0 && session.expiresAtSec <= now) return '/login';
   return '/';
 }
 

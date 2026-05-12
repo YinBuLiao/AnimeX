@@ -39,5 +39,34 @@ void main() {
       );
       expect(r, '/');
     });
+
+    test('routes to /login when token has expired', () {
+      final now = DateTime.utc(2026, 5, 12, 12, 0, 0);
+      // expiresAtSec is one second in the past
+      final r = decideStartRoute(
+        config: const ServerConfig(baseUrl: 'https://x'),
+        session: StoredSession(
+            token: 't',
+            username: 'u',
+            role: 'user',
+            expiresAtSec: now.millisecondsSinceEpoch ~/ 1000 - 1),
+        clock: () => now,
+      );
+      expect(r, '/login');
+    });
+
+    test('stays at / when token expires in the future', () {
+      final now = DateTime.utc(2026, 5, 12, 12, 0, 0);
+      final r = decideStartRoute(
+        config: const ServerConfig(baseUrl: 'https://x'),
+        session: StoredSession(
+            token: 't',
+            username: 'u',
+            role: 'user',
+            expiresAtSec: now.millisecondsSinceEpoch ~/ 1000 + 60),
+        clock: () => now,
+      );
+      expect(r, '/');
+    });
   });
 }

@@ -105,7 +105,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               TextButton(
                 onPressed: () async {
                   final router = GoRouter.of(context);
+                  // Swap server = treat as full logout: drop any cached
+                  // session so we don't accidentally send the old server's
+                  // token to the new server.
+                  await ref.read(sessionStoreProvider).clear();
                   await ref.read(serverConfigStoreProvider).clear();
+                  ref.invalidate(currentSessionProvider);
                   ref.invalidate(serverConfigProvider);
                   if (mounted) router.go('/setup');
                 },
