@@ -153,6 +153,7 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/favicon.ico", s.handleFavicon)
 	mux.HandleFunc("/api/auth/login", s.handleAuthLogin)
+	mux.HandleFunc("/api/auth/mobile-login", s.handleMobileLogin)
 	mux.HandleFunc("/api/auth/logout", s.handleAuthLogout)
 	mux.HandleFunc("/api/auth/me", s.handleAuthMe)
 	mux.HandleFunc("/api/auth/register", s.handleAuthRegister)
