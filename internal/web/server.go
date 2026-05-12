@@ -223,6 +223,15 @@ func (s Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(authCookieName); err == nil {
 		s.Sessions.Delete(cookie.Value)
 	}
+	if header := r.Header.Get("Authorization"); header != "" {
+		const prefix = "Bearer "
+		if len(header) > len(prefix) && strings.EqualFold(header[:len(prefix)], prefix) {
+			token := strings.TrimSpace(header[len(prefix):])
+			if token != "" {
+				s.Sessions.Delete(token)
+			}
+		}
+	}
 	clearSessionCookie(w)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

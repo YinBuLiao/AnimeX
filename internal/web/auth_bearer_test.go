@@ -56,6 +56,30 @@ func TestAuthenticatedUserRejectsBogusBearer(t *testing.T) {
 	}
 }
 
+func TestHandleAuthLogoutInvalidatesBearerToken(t *testing.T) {
+	// Regression: mobile clients send POST /api/auth/logout with the Bearer
+	// header and no cookie. The handler must delete the matching session
+	// from the store; otherwise the token keeps working server-side.
+	store := NewSessionStore()
+	token, _, err := store.Create("alice", "user")
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	s := Server{Sessions: store}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	s.handleAuthLogout(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if _, ok := store.User(token); ok {
+		t.Fatalf("bearer token still valid after logout")
+	}
+}
+
 func TestAuthenticatedUserCaseInsensitiveBearerPrefix(t *testing.T) {
 	store := NewSessionStore()
 	token, _, err := store.Create("carol", "user")
