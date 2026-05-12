@@ -153,6 +153,19 @@ final notificationsSeenStoreProvider =
   return NotificationsSeenStore.load();
 });
 
+/// Pending admin download-request count for the bottom-nav badge. Admin
+/// only; auto-disposes so non-admin sessions don't poll.
+final pendingAdminRequestsCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final repo = await ref.watch(adminRepositoryProvider.future);
+  try {
+    final list = await repo.downloadRequests();
+    return list.where((r) => r.isPending).length;
+  } catch (_) {
+    return 0;
+  }
+});
+
 /// Unread notification count. Watches the notifications repo + the local
 /// last-seen pref. Invalidate after the user views the notifications page
 /// to clear the badge.

@@ -188,6 +188,20 @@ GoRouter buildRouter(Ref ref) {
 
 final routerProvider = Provider<GoRouter>(buildRouter);
 
+class _AdminIcon extends StatelessWidget {
+  final WidgetRef ref;
+  const _AdminIcon({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = ref.watch(pendingAdminRequestsCountProvider);
+    final count = pending.asData?.value ?? 0;
+    const icon = Icon(Icons.admin_panel_settings_outlined);
+    if (count <= 0) return icon;
+    return Badge.count(count: count, child: icon);
+  }
+}
+
 class _RootShell extends ConsumerWidget {
   const _RootShell();
 
@@ -212,8 +226,10 @@ class _RootShell extends ConsumerWidget {
       const NavigationDestination(
           icon: Icon(Icons.video_library_outlined), label: '媒体库'),
       if (isAdmin)
-        const NavigationDestination(
-            icon: Icon(Icons.admin_panel_settings_outlined), label: '管理'),
+        NavigationDestination(
+          icon: _AdminIcon(ref: ref),
+          label: '管理',
+        ),
       const NavigationDestination(
           icon: Icon(Icons.person_outline), label: '我的'),
     ];
