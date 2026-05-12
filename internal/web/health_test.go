@@ -44,4 +44,7 @@ func TestHandleHealthRejectsNonGET(t *testing.T) {
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status: got %d want 405", rr.Code)
 	}
+	if allow := rr.Header().Get("Allow"); allow != http.MethodGet {
+		t.Fatalf("Allow header: got %q want %q", allow, http.MethodGet)
+	}
 }
