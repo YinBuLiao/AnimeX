@@ -35,4 +35,16 @@ class HistoryRepository {
       throw e.toApi();
     }
   }
+
+  Future<HistoryResponse> remove(String fileId) async {
+    try {
+      final resp = await _dio.delete<Map<String, dynamic>>(
+        '/api/history',
+        queryParameters: {'file_id': fileId},
+      );
+      return HistoryResponse.fromJson(resp.data ?? const {});
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
 }

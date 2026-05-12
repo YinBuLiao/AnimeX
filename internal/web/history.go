@@ -190,6 +190,16 @@ func (s Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
 	case http.MethodDelete:
+		fileID := strings.TrimSpace(r.URL.Query().Get("file_id"))
+		if fileID != "" {
+			entries, err := store.remove(user.Username, fileID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
+			return
+		}
 		if err := store.clear(user.Username); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
@@ -199,6 +209,30 @@ func (s Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, PUT, POST, DELETE")
 		writeError(w, http.StatusMethodNotAllowed, errors.New("请求方法不允许"))
 	}
+}
+
+// remove drops a single entry by file_id and returns the resulting list.
+// Missing file_ids are a no-op so the client can be lazy about retries.
+func (h *historyStore) remove(user, fileID string) ([]HistoryEntry, error) {
+	mu := h.lockFor(user)
+	mu.Lock()
+	defer mu.Unlock()
+	f, err := h.load(user)
+	if err != nil {
+		return nil, err
+	}
+	out := f.Entries[:0]
+	for _, e := range f.Entries {
+		if e.FileID == fileID {
+			continue
+		}
+		out = append(out, e)
+	}
+	f.Entries = out
+	if err := h.save(user, f); err != nil {
+		return nil, err
+	}
+	return f.Entries, nil
 }
 
 // clear deletes the per-user history file entirely.

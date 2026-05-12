@@ -154,6 +154,37 @@ func TestHandleHistoryRejectsUnsupportedMethod(t *testing.T) {
 	}
 }
 
+func TestHandleHistoryDeleteSingleEntryByFileID(t *testing.T) {
+	s, _ := newHistoryTestServer(t)
+	token, _, _ := s.Sessions.Create("alice", "user")
+
+	for _, fid := range []string{"f1", "f2"} {
+		body, _ := json.Marshal(HistoryEntry{FileID: fid, BangumiTitle: "X"})
+		rr := httptest.NewRecorder()
+		s.handleHistory(rr, bearerRequest(http.MethodPut, "/api/history", token, body))
+		if rr.Code != http.StatusOK {
+			t.Fatalf("seed %s: %d", fid, rr.Code)
+		}
+	}
+
+	// DELETE with file_id removes only that one entry.
+	rr := httptest.NewRecorder()
+	s.handleHistory(rr, bearerRequest(http.MethodDelete, "/api/history?file_id=f1", token, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("delete f1: %d", rr.Code)
+	}
+
+	rr = httptest.NewRecorder()
+	s.handleHistory(rr, bearerRequest(http.MethodGet, "/api/history", token, nil))
+	var got struct {
+		Entries []HistoryEntry `json:"entries"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &got)
+	if len(got.Entries) != 1 || got.Entries[0].FileID != "f2" {
+		t.Fatalf("expected only f2 to remain, got %+v", got.Entries)
+	}
+}
+
 func TestHandleHistoryDeleteClearsAll(t *testing.T) {
 	s, _ := newHistoryTestServer(t)
 	token, _, _ := s.Sessions.Create("alice", "user")
