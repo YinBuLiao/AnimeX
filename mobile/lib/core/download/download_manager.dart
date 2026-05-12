@@ -141,6 +141,52 @@ class DownloadManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Pauses every running task. Returns the count actually paused.
+  Future<int> pauseAll() async {
+    var count = 0;
+    for (final e in _entries.values.toList()) {
+      if (e.status != DownloadStatus.running) continue;
+      final task = await _dl.taskForId(e.fileId);
+      if (task != null) {
+        await _dl.pause(task as DownloadTask);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Resumes every paused task. Returns the count actually resumed.
+  Future<int> resumeAll() async {
+    var count = 0;
+    for (final e in _entries.values.toList()) {
+      if (e.status != DownloadStatus.paused) continue;
+      final task = await _dl.taskForId(e.fileId);
+      if (task != null) {
+        await _dl.resume(task as DownloadTask);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Drops every entry whose status is failed/canceled. Returns the count.
+  Future<int> clearFinishedFailures() async {
+    final removed = <String>[];
+    for (final e in _entries.values.toList()) {
+      if (e.status != DownloadStatus.failed &&
+          e.status != DownloadStatus.canceled) {
+        continue;
+      }
+      _entries.remove(e.fileId);
+      removed.add(e.fileId);
+    }
+    if (removed.isNotEmpty) {
+      await _persist();
+      notifyListeners();
+    }
+    return removed.length;
+  }
+
   /// Cancels every queued/running task and deletes every file we know about,
   /// then resets persisted state. Returns the number of entries removed.
   Future<int> clearAll() async {

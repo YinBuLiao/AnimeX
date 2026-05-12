@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/data/dtos/download_entry.dart';
+import 'package:animex_mobile/data/dtos/library_bangumi.dart';
+import 'package:animex_mobile/features/detail/detail_page.dart'
+    show libraryListProvider;
 import 'package:animex_mobile/features/player/player_args.dart';
+import 'package:animex_mobile/features/player/player_launcher.dart';
 
 class DownloadsPage extends ConsumerWidget {
   const DownloadsPage({super.key});
@@ -28,8 +32,57 @@ class DownloadsPage extends ConsumerWidget {
             e.status == DownloadStatus.canceled)
         .toList();
 
+    final hasRunning =
+        running.any((e) => e.status == DownloadStatus.running);
+    final hasPaused = running.any((e) => e.status == DownloadStatus.paused);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('下载')),
+      appBar: AppBar(
+        title: const Text('下载'),
+        actions: [
+          if (hasRunning)
+            IconButton(
+              icon: const Icon(Icons.pause_circle_outline),
+              tooltip: '全部暂停',
+              onPressed: () async {
+                final n = await ref.read(downloadManagerProvider).pauseAll();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已暂停 $n 个任务')),
+                  );
+                }
+              },
+            ),
+          if (hasPaused)
+            IconButton(
+              icon: const Icon(Icons.play_circle_outline),
+              tooltip: '全部继续',
+              onPressed: () async {
+                final n = await ref.read(downloadManagerProvider).resumeAll();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已恢复 $n 个任务')),
+                  );
+                }
+              },
+            ),
+          if (failed.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: '清理失败',
+              onPressed: () async {
+                final n = await ref
+                    .read(downloadManagerProvider)
+                    .clearFinishedFailures();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已清理 $n 条失败记录')),
+                  );
+                }
+              },
+            ),
+        ],
+      ),
       body: entries.isEmpty
           ? const _Empty()
           : ListView(
@@ -74,10 +127,48 @@ class _Tile extends ConsumerWidget {
   final DownloadEntry entry;
   const _Tile({required this.entry});
 
+  void _play(BuildContext context, WidgetRef ref) {
+    final libAsync = ref.read(libraryListProvider);
+    final cfgAsync = ref.read(serverConfigProvider);
+    final downloads = ref.read(downloadManagerProvider);
+    final baseUrl =
+        cfgAsync.maybeWhen(data: (c) => c.baseUrl.trimRight(), orElse: () => '');
+    final bangumi = libAsync.maybeWhen(
+      data: (lib) => lib.bangumi
+          .where((b) => b.title == entry.bangumiTitle)
+          .cast<LibraryBangumi?>()
+          .firstWhere((_) => true, orElse: () => null),
+      orElse: () => null,
+    );
+    PlayerArgs? args;
+    if (bangumi != null) {
+      args = buildBangumiArgs(
+        bangumi: bangumi,
+        selectedFileId: entry.fileId,
+        baseUrl: baseUrl,
+        downloads: downloads,
+        coverUrlFallback: entry.coverUrl,
+      );
+    }
+    args ??= PlayerArgs(
+      url: entry.url,
+      fileId: entry.fileId,
+      title: entry.episode == null
+          ? entry.bangumiTitle
+          : '${entry.bangumiTitle} · ${entry.episode}',
+      bangumiTitle: entry.bangumiTitle,
+      episode: entry.episode,
+      coverUrl: entry.coverUrl,
+      localPath: entry.isComplete ? entry.localPath : null,
+    );
+    context.push('/player', extra: args);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final manager = ref.read(downloadManagerProvider);
     return ListTile(
+      onTap: entry.isComplete ? () => _play(context, ref) : null,
       title: Text(
         entry.episode == null
             ? entry.bangumiTitle
@@ -120,20 +211,7 @@ class _Tile extends ConsumerWidget {
         onSelected: (v) async {
           switch (v) {
             case 'play':
-              context.push(
-                '/player',
-                extra: PlayerArgs(
-                  url: entry.url,
-                  fileId: entry.fileId,
-                  title: entry.episode == null
-                      ? entry.bangumiTitle
-                      : '${entry.bangumiTitle} · ${entry.episode}',
-                  bangumiTitle: entry.bangumiTitle,
-                  episode: entry.episode,
-                  coverUrl: entry.coverUrl,
-                  localPath: entry.isComplete ? entry.localPath : null,
-                ),
-              );
+              _play(context, ref);
             case 'pause':
               await manager.pause(entry.fileId);
             case 'resume':
