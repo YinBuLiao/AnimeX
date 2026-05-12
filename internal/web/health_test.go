@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"bangumi-pikpak/internal/config"
 )
 
 func TestHandleHealthReturnsVersion(t *testing.T) {
@@ -93,6 +95,46 @@ func TestHealthBypassesInstallLock(t *testing.T) {
 		t.Fatalf("decode body: %v", err)
 	}
 	if !body.OK || body.Version != "test-v1" || body.Installed {
+		t.Fatalf("bad body: %+v", body)
+	}
+}
+
+func TestHealthBypassesAuthMiddleware(t *testing.T) {
+	// Regression: /api/health must remain anonymous even after the system is
+	// fully installed with RequireLogin=true. The mobile app keeps polling
+	// /api/health from the server-setup page (e.g. after "更换服务器") so the
+	// authMiddleware must let it through without a session cookie / Bearer.
+	tmpDB := filepath.Join(t.TempDir(), "config.db")
+	s := Server{
+		Version:      "test-v1",
+		ConfigDBPath: tmpDB,
+		Runtime: NewRuntimeState(
+			config.Config{RequireLogin: true},
+			true,  // installed
+			false, // installOnly
+			nil, nil, nil, nil, nil,
+		),
+	}
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/api/health")
+	if err != nil {
+		t.Fatalf("GET /api/health: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want 200 (auth middleware should not block /api/health)", resp.StatusCode)
+	}
+	var body struct {
+		OK        bool `json:"ok"`
+		Installed bool `json:"installed"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.OK || !body.Installed {
 		t.Fatalf("bad body: %+v", body)
 	}
 }

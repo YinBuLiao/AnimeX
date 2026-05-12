@@ -2208,7 +2208,8 @@ func (s Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/api/") ||
 			strings.HasPrefix(r.URL.Path, "/api/install") ||
-			strings.HasPrefix(r.URL.Path, "/api/auth/") {
+			strings.HasPrefix(r.URL.Path, "/api/auth/") ||
+			r.URL.Path == "/api/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
