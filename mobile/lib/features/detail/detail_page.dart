@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/data/dtos/download_entry.dart';
+import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
@@ -213,13 +214,25 @@ class _EpisodeGrid extends ConsumerWidget {
       itemBuilder: (context, i) {
         final ep = bangumi.episodes[i];
         final file = ep.files.isEmpty ? null : ep.files.first;
-        final resumeSec = file == null
-            ? 0
-            : history
-                .where((e) => e.fileId == file.id)
-                .map((e) => e.positionSec)
-                .followedBy(const [0])
-                .first;
+        final hist = file == null
+            ? null
+            : history.firstWhere(
+                (e) => e.fileId == file.id,
+                orElse: () => HistoryEntry(
+                  fileId: '',
+                  bangumiTitle: '',
+                  positionSec: 0,
+                  durationSec: 0,
+                  updatedAt: 0,
+                ),
+              );
+        final resumeSec = (hist?.fileId.isNotEmpty ?? false)
+            ? hist!.positionSec
+            : 0;
+        final watchProgress = (hist?.fileId.isNotEmpty ?? false) &&
+                hist!.durationSec > 0
+            ? hist.positionSec / hist.durationSec
+            : 0.0;
         final dlEntry = file == null ? null : downloads.entryFor(file.id);
         // Build full playlist so PlayerPage can auto-advance.
         final playlist = <PlayerArgs>[];
@@ -282,9 +295,45 @@ class _EpisodeGrid extends ConsumerWidget {
                 right: 2,
                 child: _DownloadBadge(entry: dlEntry),
               ),
+            if (watchProgress > 0)
+              Positioned(
+                bottom: 2,
+                left: 2,
+                child: _WatchBadge(progress: watchProgress),
+              ),
           ],
         );
       },
+    );
+  }
+}
+
+class _WatchBadge extends StatelessWidget {
+  final double progress;
+  const _WatchBadge({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = progress >= 0.95;
+    if (completed) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+        ),
+        padding: const EdgeInsets.all(2),
+        child: const Icon(Icons.check, size: 10, color: Colors.white),
+      );
+    }
+    return SizedBox(
+      width: 14,
+      height: 14,
+      child: CircularProgressIndicator(
+        value: progress.clamp(0.0, 1.0),
+        strokeWidth: 2,
+        backgroundColor:
+            Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+      ),
     );
   }
 }

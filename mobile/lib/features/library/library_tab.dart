@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
+import 'package:animex_mobile/core/preferences/app_preferences.dart';
+import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
@@ -15,11 +17,25 @@ class LibraryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libAsync = ref.watch(libraryListProvider);
+    final prefs = ref.watch(appPreferencesProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('媒体库'),
         automaticallyImplyLeading: false,
         actions: [
+          PopupMenuButton<LibrarySort>(
+            icon: const Icon(Icons.sort),
+            tooltip: '排序：${prefs.librarySort.label}',
+            onSelected: prefs.setLibrarySort,
+            itemBuilder: (_) => [
+              for (final s in LibrarySort.values)
+                CheckedPopupMenuItem(
+                  value: s,
+                  checked: prefs.librarySort == s,
+                  child: Text(s.label),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.cloud_download_outlined),
             tooltip: '下载',
@@ -38,14 +54,60 @@ class LibraryTab extends ConsumerWidget {
             if (lib.bangumi.isEmpty) {
               return const _EmptyState();
             }
+            final history = ref.watch(historyListProvider).asData?.value
+                    .entries ??
+                const <HistoryEntry>[];
+            final sorted = _sort(
+              lib.bangumi,
+              prefs.librarySort,
+              history,
+            );
             return _Grid(
-              items: lib.bangumi,
+              items: sorted,
               downloads: ref.watch(downloadEntriesProvider),
             );
           },
         ),
       ),
     );
+  }
+
+  List<LibraryBangumi> _sort(
+    List<LibraryBangumi> items,
+    LibrarySort sort,
+    List<HistoryEntry> history,
+  ) {
+    final sorted = items.toList();
+    switch (sort) {
+      case LibrarySort.titleAscending:
+        sorted.sort((a, b) => a.title.compareTo(b.title));
+        return sorted;
+      case LibrarySort.episodeCountDescending:
+        sorted.sort((a, b) => b.episodes.length.compareTo(a.episodes.length));
+        return sorted;
+      case LibrarySort.recentlyWatched:
+        final fileIds = <String, int>{
+          for (final h in history) h.fileId: h.updatedAt,
+        };
+        int recent(LibraryBangumi b) {
+          var best = 0;
+          for (final ep in b.episodes) {
+            for (final f in ep.files) {
+              final ts = fileIds[f.id];
+              if (ts != null && ts > best) best = ts;
+            }
+          }
+          return best;
+        }
+
+        sorted.sort((a, b) {
+          final ra = recent(a);
+          final rb = recent(b);
+          if (ra != rb) return rb.compareTo(ra);
+          return a.title.compareTo(b.title);
+        });
+        return sorted;
+    }
   }
 
   Widget _libraryError(
