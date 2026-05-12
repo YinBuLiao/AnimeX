@@ -15,6 +15,7 @@ import 'package:animex_mobile/core/pip/pip_controller.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
+import 'package:animex_mobile/features/player/player_gestures.dart';
 
 class PlayerPage extends ConsumerStatefulWidget {
   final PlayerArgs args;
@@ -30,11 +31,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<bool>? _playingSub;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  bool _playing = false;
   int _lastReportedSec = -1;
   DateTime _lastReportAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _seekedInitial = false;
+  bool _controlsVisible = true;
+  Timer? _controlsTimer;
 
   @override
   void initState() {
@@ -53,6 +58,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _durationSub = _player.stream.duration.listen((d) {
       if (mounted) setState(() => _duration = d);
     });
+    _playingSub = _player.stream.playing.listen((p) {
+      if (mounted) setState(() => _playing = p);
+    });
+    _resetControlsTimer();
 
     // Auto-enter PiP on home button while a video is loaded. No-op on iOS.
     PipController.setEnabled(enabled: true);
@@ -128,12 +137,28 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
   }
 
+  void _resetControlsTimer() {
+    _controlsTimer?.cancel();
+    if (mounted && _controlsVisible) {
+      _controlsTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _controlsVisible = false);
+      });
+    }
+  }
+
+  void _toggleControls() {
+    setState(() => _controlsVisible = !_controlsVisible);
+    if (_controlsVisible) _resetControlsTimer();
+  }
+
   @override
   void dispose() {
     _maybeReport(force: true);
     PipController.setEnabled(enabled: false);
+    _controlsTimer?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
+    _playingSub?.cancel();
     _player.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -184,51 +209,45 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            Center(
+            Positioned.fill(
               child: Video(
                 controller: _videoController,
-                controls: AdaptiveVideoControls,
+                controls: NoVideoControls,
               ),
             ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
+            // Custom gestures: seek / brightness / volume / ±10s / 2x.
+            Positioned.fill(
+              child: PlayerGestureOverlay(
+                player: _player,
+                position: _position,
+                duration: _duration,
+                onTap: _toggleControls,
               ),
             ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.picture_in_picture_alt,
-                        color: Colors.white),
-                    tooltip: '画中画',
-                    onPressed: () => PipController.enterNow(),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      isCasting ? Icons.cast_connected : Icons.cast,
-                      color: Colors.white,
-                    ),
-                    tooltip: '投屏',
-                    onPressed: _openCastPicker,
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 12,
-              left: 56,
-              right: 56,
-              child: Text(
-                widget.args.title,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            // Top + bottom chrome auto-hide after 3s of inactivity.
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _controlsVisible ? 1.0 : 0.0,
+              child: IgnorePointer(
+                ignoring: !_controlsVisible,
+                child: _PlayerChrome(
+                  title: widget.args.title,
+                  position: _position,
+                  duration: _duration,
+                  playing: _playing,
+                  isCasting: isCasting,
+                  onClose: () => Navigator.of(context).pop(),
+                  onTogglePlay: () {
+                    _playing ? _player.pause() : _player.play();
+                    _resetControlsTimer();
+                  },
+                  onSeek: (d) {
+                    _player.seek(d);
+                    _resetControlsTimer();
+                  },
+                  onPip: () => PipController.enterNow(),
+                  onCast: _openCastPicker,
+                ),
               ),
             ),
             if (isCasting)
@@ -331,6 +350,149 @@ class _CastOverlay extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PlayerChrome extends StatelessWidget {
+  final String title;
+  final Duration position;
+  final Duration duration;
+  final bool playing;
+  final bool isCasting;
+  final VoidCallback onClose;
+  final VoidCallback onTogglePlay;
+  final ValueChanged<Duration> onSeek;
+  final VoidCallback onPip;
+  final VoidCallback onCast;
+
+  const _PlayerChrome({
+    required this.title,
+    required this.position,
+    required this.duration,
+    required this.playing,
+    required this.isCasting,
+    required this.onClose,
+    required this.onTogglePlay,
+    required this.onSeek,
+    required this.onPip,
+    required this.onCast,
+  });
+
+  String _fmt(Duration d) {
+    final h = d.inHours;
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = duration.inMilliseconds > 0
+        ? position.inMilliseconds / duration.inMilliseconds
+        : 0.0;
+    return Column(
+      children: [
+        // Top bar.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.black87, Colors.transparent],
+            ),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: onClose,
+              ),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.picture_in_picture_alt,
+                    color: Colors.white),
+                tooltip: '画中画',
+                onPressed: onPip,
+              ),
+              IconButton(
+                icon: Icon(
+                  isCasting ? Icons.cast_connected : Icons.cast,
+                  color: Colors.white,
+                ),
+                tooltip: '投屏',
+                onPressed: onCast,
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // Bottom bar.
+        Container(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Colors.black87, Colors.transparent],
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      playing ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    onPressed: onTogglePlay,
+                  ),
+                  Text(
+                    _fmt(position),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6),
+                        overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 14),
+                      ),
+                      child: Slider(
+                        value: progress.clamp(0.0, 1.0),
+                        onChanged: (v) {
+                          if (duration.inMilliseconds > 0) {
+                            onSeek(Duration(
+                                milliseconds:
+                                    (v * duration.inMilliseconds).round()));
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _fmt(duration),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
