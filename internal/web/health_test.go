@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -57,6 +58,42 @@ func TestHandleHealthReturnsInstalledTrue(t *testing.T) {
 	}
 	if !body.OK || !body.Installed {
 		t.Fatalf("expected installed=true; got %+v", body)
+	}
+}
+
+func TestHealthBypassesInstallLock(t *testing.T) {
+	// Regression: /api/health must be reachable BEFORE the install wizard
+	// has completed so the mobile app can probe the server URL. The
+	// installLockMiddleware must let /api/health through even when
+	// installed=false / InstallOnly=true.
+	tmpDB := filepath.Join(t.TempDir(), "config.db")
+	s := Server{
+		Version:      "test-v1",
+		InstallOnly:  true,
+		ConfigDBPath: tmpDB,
+	}
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/api/health")
+	if err != nil {
+		t.Fatalf("GET /api/health: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want 200 (install lock should not block /api/health)", resp.StatusCode)
+	}
+	var body struct {
+		OK        bool   `json:"ok"`
+		Version   string `json:"version"`
+		Installed bool   `json:"installed"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.OK || body.Version != "test-v1" || body.Installed {
+		t.Fatalf("bad body: %+v", body)
 	}
 }
 

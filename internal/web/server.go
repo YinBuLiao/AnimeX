@@ -2066,7 +2066,9 @@ func (s Server) currentInstallConfig() config.Config {
 
 func (s Server) installLockMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/api/install") {
+		if !strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/api/install") ||
+			r.URL.Path == "/api/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
