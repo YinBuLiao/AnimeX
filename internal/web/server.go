@@ -182,6 +182,7 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("/api/download/request", s.handleDownloadRequest)
 	mux.HandleFunc("/api/sync", s.handleSync)
 	mux.HandleFunc("/api/stream", s.handleStream)
+	mux.HandleFunc("/api/history", s.handleHistory)
 	return loggingMiddleware(s.log(), s.installLockMiddleware(s.authMiddleware(mux)))
 }
 
