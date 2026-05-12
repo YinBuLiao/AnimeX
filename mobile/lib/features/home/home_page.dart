@@ -8,6 +8,7 @@ import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart' show libraryListProvider;
 import 'package:animex_mobile/features/player/player_args.dart';
+import 'package:animex_mobile/features/player/player_launcher.dart';
 
 final _historyProvider = FutureProvider<List<HistoryEntry>>((ref) async {
   final repo = await ref.watch(historyRepositoryProvider.future);
@@ -170,18 +171,7 @@ class _HistoryCard extends ConsumerWidget {
     return SizedBox(
       width: 120,
       child: InkWell(
-        onTap: () => context.push(
-          '/player',
-          extra: PlayerArgs(
-            url: entry.url ?? '',
-            fileId: entry.fileId,
-            title: '$title$ep',
-            bangumiTitle: entry.bangumiTitle,
-            episode: entry.episode,
-            coverUrl: entry.coverUrl,
-            initialPositionSec: entry.positionSec,
-          ),
-        ),
+        onTap: () => _launch(context, ref, title: title, ep: ep),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -220,6 +210,47 @@ class _HistoryCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _launch(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String ep,
+  }) {
+    final libAsync = ref.read(libraryListProvider);
+    final cfgAsync = ref.read(serverConfigProvider);
+    final downloads = ref.read(downloadManagerProvider);
+    final baseUrl =
+        cfgAsync.maybeWhen(data: (c) => c.baseUrl.trimRight(), orElse: () => '');
+    final bangumi = libAsync.maybeWhen(
+      data: (lib) => lib.bangumi
+          .where((b) => b.title == entry.bangumiTitle)
+          .cast<LibraryBangumi?>()
+          .firstWhere((_) => true, orElse: () => null),
+      orElse: () => null,
+    );
+    PlayerArgs? args;
+    if (bangumi != null) {
+      args = buildBangumiArgs(
+        bangumi: bangumi,
+        selectedFileId: entry.fileId,
+        baseUrl: baseUrl,
+        downloads: downloads,
+        initialPositionSec: entry.positionSec,
+        coverUrlFallback: entry.coverUrl,
+      );
+    }
+    args ??= PlayerArgs(
+      url: entry.url ?? '',
+      fileId: entry.fileId,
+      title: '$title$ep',
+      bangumiTitle: entry.bangumiTitle,
+      episode: entry.episode,
+      coverUrl: entry.coverUrl,
+      initialPositionSec: entry.positionSec,
+    );
+    context.push('/player', extra: args);
   }
 
   Widget _cover(BuildContext ctx, String? url) {

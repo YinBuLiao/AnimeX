@@ -9,6 +9,7 @@ import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
+import 'package:animex_mobile/features/player/player_launcher.dart';
 
 /// Looks up library entries once per session (heavy call). Detail pages
 /// filter locally by title match.
@@ -242,7 +243,7 @@ class _EpisodeGrid extends ConsumerWidget {
             final pf = pep.files.first;
             final pDl = downloads.entryFor(pf.id);
             playlist.add(PlayerArgs(
-              url: _absoluteUrl(baseUrl, pf.streamUrl),
+              url: absoluteUrl(baseUrl, pf.streamUrl),
               fileId: pf.id,
               title: '${bangumi.title} · ${pep.label}',
               bangumiTitle: bangumi.title,
@@ -262,7 +263,7 @@ class _EpisodeGrid extends ConsumerWidget {
                   : () => context.push(
                         '/player',
                         extra: PlayerArgs(
-                          url: _absoluteUrl(baseUrl, file.streamUrl),
+                          url: absoluteUrl(baseUrl, file.streamUrl),
                           fileId: file.id,
                           title: '${bangumi.title} · ${ep.label}',
                           bangumiTitle: bangumi.title,
@@ -421,7 +422,7 @@ Future<void> _showEpisodeMenu(
       }
       await manager.enqueue(
         fileId: file.id,
-        url: _absoluteUrl(baseUrl, file.streamUrl),
+        url: absoluteUrl(baseUrl, file.streamUrl),
         bangumiTitle: bangumi.title,
         episode: episode.label,
         fileName: file.name,
@@ -433,13 +434,6 @@ Future<void> _showEpisodeMenu(
     case 'delete':
       await manager.deleteEntry(file.id);
   }
-}
-
-String _absoluteUrl(String base, String path) {
-  if (path.isEmpty) return base;
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  if (path.startsWith('/')) return '$base$path';
-  return '$base/$path';
 }
 
 class _EpisodeEmpty extends StatelessWidget {
