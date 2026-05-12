@@ -17,6 +17,7 @@ import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
 import 'package:animex_mobile/features/player/episode_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_gestures.dart';
+import 'package:animex_mobile/features/player/tracks_picker_sheet.dart';
 
 class PlayerPage extends ConsumerStatefulWidget {
   final PlayerArgs args;
@@ -35,6 +36,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<double>? _rateSub;
+  StreamSubscription<Tracks>? _tracksSub;
+  StreamSubscription<Track>? _trackSub;
+  Tracks _tracks = const Tracks();
+  Track _selectedTrack = const Track();
   double _rate = 1.0;
   Timer? _sleepTimer;
   bool _sleepEndOfEpisode = false;
@@ -77,6 +82,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     });
     _rateSub = _player.stream.rate.listen((r) {
       if (mounted) setState(() => _rate = r);
+    });
+    _tracksSub = _player.stream.tracks.listen((t) {
+      if (mounted) setState(() => _tracks = t);
+    });
+    _trackSub = _player.stream.track.listen((t) {
+      if (mounted) setState(() => _selectedTrack = t);
     });
     _resetControlsTimer();
 
@@ -211,6 +222,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _playingSub?.cancel();
     _completedSub?.cancel();
     _rateSub?.cancel();
+    _tracksSub?.cancel();
+    _trackSub?.cancel();
     _player.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -356,6 +369,31 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
   }
 
+  Future<void> _pickTracks() async {
+    if (_tracks.audio.isEmpty && _tracks.subtitle.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前媒体没有可选轨道')),
+        );
+      }
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => TracksPickerSheet(
+        tracks: _tracks,
+        selected: _selectedTrack,
+        onPickAudio: (t) => _player.setAudioTrack(t),
+        onPickSubtitle: (t) => _player.setSubtitleTrack(t),
+      ),
+    );
+    _resetControlsTimer();
+  }
+
+  bool get _hasPickableTracks =>
+      _tracks.audio.length > 1 || _tracks.subtitle.isNotEmpty;
+
   Future<void> _jumpToEpisode(int newIndex) async {
     if (newIndex < 0 || newIndex >= _args.playlist.length) return;
     _maybeReport(force: true);
@@ -442,6 +480,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   onPickRate: _pickRate,
                   sleepArmed: _isSleepArmed,
                   onPickSleep: _pickSleepTimer,
+                  onPickTracks: _hasPickableTracks ? _pickTracks : null,
                 ),
               ),
             ),
@@ -565,6 +604,7 @@ class _PlayerChrome extends StatelessWidget {
   final VoidCallback onPickRate;
   final bool sleepArmed;
   final VoidCallback onPickSleep;
+  final VoidCallback? onPickTracks;
 
   const _PlayerChrome({
     required this.title,
@@ -582,6 +622,7 @@ class _PlayerChrome extends StatelessWidget {
     required this.sleepArmed,
     required this.onPickSleep,
     this.onEpisodes,
+    this.onPickTracks,
   });
 
   String _fmt(Duration d) {
@@ -628,6 +669,13 @@ class _PlayerChrome extends StatelessWidget {
                       color: Colors.white),
                   tooltip: '剧集',
                   onPressed: onEpisodes,
+                ),
+              if (onPickTracks != null)
+                IconButton(
+                  icon: const Icon(Icons.closed_caption_outlined,
+                      color: Colors.white),
+                  tooltip: '字幕与音轨',
+                  onPressed: onPickTracks,
                 ),
               IconButton(
                 icon: Icon(
