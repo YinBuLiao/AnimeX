@@ -172,3 +172,6 @@ docker-data/
 
 # uiautomator2 smoke test debug artifacts
 mobile/scripts/u2_screenshots/
+
+# Local docker-compose overrides (developer-specific)
+docker-compose.override.yml
