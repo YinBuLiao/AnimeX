@@ -9,7 +9,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/cast/cast_device.dart';
+import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
+import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 
 class PlayerPage extends ConsumerStatefulWidget {
@@ -138,8 +141,39 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     super.dispose();
   }
 
+  Future<void> _openCastPicker() async {
+    final manager = ref.read(castManagerProvider);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => CastPickerSheet(
+        onPick: (device) => _startCasting(manager, device),
+      ),
+    );
+  }
+
+  Future<void> _startCasting(CastManager manager, CastDevice device) async {
+    await _player.pause();
+    await manager.cast(
+      device: device,
+      url: widget.args.url,
+      title: widget.args.title,
+      position: _position,
+    );
+  }
+
+  Future<void> _stopCasting() async {
+    final manager = ref.read(castManagerProvider);
+    await manager.stop();
+    await _player.play();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cast = ref.watch(castManagerProvider);
+    final isCasting = cast.activeDevice != null &&
+        cast.status != CastSessionStatus.idle &&
+        cast.status != CastSessionStatus.error;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -160,6 +194,18 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               ),
             ),
             Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: Icon(
+                  isCasting ? Icons.cast_connected : Icons.cast,
+                  color: Colors.white,
+                ),
+                tooltip: '投屏',
+                onPressed: _openCastPicker,
+              ),
+            ),
+            Positioned(
               top: 12,
               left: 56,
               right: 56,
@@ -169,6 +215,103 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+            ),
+            if (isCasting)
+              Positioned.fill(
+                child: _CastOverlay(
+                  device: cast.activeDevice!,
+                  status: cast.status,
+                  errorMessage: cast.errorMessage,
+                  onPause: cast.pause,
+                  onResume: cast.resume,
+                  onStop: _stopCasting,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CastOverlay extends StatelessWidget {
+  final CastDevice device;
+  final CastSessionStatus status;
+  final String? errorMessage;
+  final Future<void> Function() onPause;
+  final Future<void> Function() onResume;
+  final Future<void> Function() onStop;
+
+  const _CastOverlay({
+    required this.device,
+    required this.status,
+    required this.errorMessage,
+    required this.onPause,
+    required this.onResume,
+    required this.onStop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isPlaying = status == CastSessionStatus.playing;
+    final isConnecting = status == CastSessionStatus.connecting;
+    return Container(
+      color: Colors.black.withValues(alpha: 0.85),
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isConnecting ? Icons.cast : Icons.cast_connected,
+              color: Colors.white70,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isConnecting ? '正在连接…' : '正在投屏到',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              device.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                errorMessage!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!isConnecting)
+                  IconButton(
+                    icon: Icon(
+                      isPlaying ? Icons.pause_circle : Icons.play_circle,
+                      color: Colors.white,
+                      size: 44,
+                    ),
+                    onPressed: isPlaying ? onPause : onResume,
+                  ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  icon: const Icon(Icons.stop_circle_outlined,
+                      color: Colors.white),
+                  label: const Text('结束投屏',
+                      style: TextStyle(color: Colors.white)),
+                  onPressed: onStop,
+                ),
+              ],
             ),
           ],
         ),

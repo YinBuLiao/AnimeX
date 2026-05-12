@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:animex_mobile/core/auth/session_store.dart';
+import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
@@ -105,3 +106,8 @@ final downloadManagerProvider = Provider<DownloadManager>((_) {
 /// Reactive list of download entries, rebuilt on every manager notify.
 final downloadEntriesProvider = ChangeNotifierProvider<DownloadManager>(
     (ref) => ref.watch(downloadManagerProvider));
+
+/// Singleton CastManager for the active player session. Lazily created on
+/// first read so SSDP discovery only happens when the user opens the picker.
+final castManagerProvider = ChangeNotifierProvider<CastManager>(
+    (ref) => CastManager());
