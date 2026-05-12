@@ -7,8 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/core/preferences/search_history.dart';
+import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/data/dtos/search_result.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
+import 'package:animex_mobile/features/detail/detail_page.dart'
+    show libraryListProvider;
 
 class SearchView extends ConsumerStatefulWidget {
   const SearchView({super.key});
@@ -212,18 +215,33 @@ class _SearchViewState extends ConsumerState<SearchView> {
   }
 }
 
-class _ResultTile extends StatelessWidget {
+class _ResultTile extends ConsumerWidget {
   final SearchResult result;
   const _ResultTile({required this.result});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cover = result.coverUrl;
+    final libAsync = ref.watch(libraryListProvider);
+    final inLib = libAsync.maybeWhen(
+      data: (lib) {
+        final title = result.bangumiTitle ?? result.title;
+        return lib.bangumi.any((LibraryBangumi b) => b.title == title);
+      },
+      orElse: () => false,
+    );
     return ListTile(
       onTap: () => context.push(
         '/detail',
         extra: DetailArgs.fromSearch(result),
       ),
+      trailing: inLib
+          ? Icon(
+              Icons.video_library,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            )
+          : null,
       leading: SizedBox(
         width: 48,
         height: 64,
