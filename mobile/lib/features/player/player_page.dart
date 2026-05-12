@@ -13,6 +13,8 @@ import 'package:animex_mobile/core/cast/cast_device.dart';
 import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/pip/pip_controller.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
+import 'package:animex_mobile/features/detail/detail_page.dart'
+    show historyListProvider;
 import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
 import 'package:animex_mobile/features/player/episode_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
@@ -229,6 +231,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void dispose() {
     _maybeReport(force: true);
+    // Drop the cached history list so home / detail / history pages pick up
+    // the position we just wrote on the next read.
+    ref.invalidate(historyListProvider);
     PipController.setEnabled(enabled: false);
     _controlsTimer?.cancel();
     _lockHintTimer?.cancel();
