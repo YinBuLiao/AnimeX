@@ -31,4 +31,15 @@ class SubscribedStore {
     final set = all..remove(title.trim());
     await _prefs.setStringList(_key, set.toList());
   }
+
+  /// Replaces the stored set with [titles]. Used to hydrate from the server
+  /// at login so the local mirror stays consistent across devices.
+  Future<void> replaceAll(Iterable<String> titles) async {
+    final cleaned = titles
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList();
+    await _prefs.setStringList(_key, cleaned);
+  }
 }

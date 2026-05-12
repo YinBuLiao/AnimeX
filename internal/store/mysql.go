@@ -254,6 +254,29 @@ func (s *MySQLStore) SaveSubscription(ctx context.Context, rec BangumiRecord, la
 	return err
 }
 
+// ListSubscribedTitles returns the titles of every bangumi flagged
+// subscribed. The mobile client calls this on login to hydrate its local
+// SubscribedStore so the 已订阅 button is stable across devices.
+func (s *MySQLStore) ListSubscribedTitles(ctx context.Context) ([]string, error) {
+	if s == nil {
+		return nil, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT title FROM bangumi WHERE subscribed = 1 ORDER BY title`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 func (s *MySQLStore) SaveSnapshot(ctx context.Context, key string, value any) error {
 	if s == nil || strings.TrimSpace(key) == "" {
 		return nil

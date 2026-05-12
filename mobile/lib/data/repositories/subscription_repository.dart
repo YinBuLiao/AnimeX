@@ -31,4 +31,20 @@ class SubscriptionRepository {
       throw e.toApi();
     }
   }
+
+  /// GET /api/subscriptions. Returns the bangumi titles currently flagged
+  /// subscribed on the server. Used to hydrate the local mirror.
+  Future<List<String>> listSubscribedTitles() async {
+    try {
+      final resp =
+          await _dio.get<Map<String, dynamic>>('/api/subscriptions');
+      final list =
+          (resp.data?['titles'] as List<dynamic>? ?? const <dynamic>[])
+              .map((e) => e.toString())
+              .toList();
+      return list;
+    } on DioException catch (e) {
+      throw e.toApi();
+    }
+  }
 }

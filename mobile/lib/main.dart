@@ -37,9 +37,11 @@ class _AnimeXAppState extends ConsumerState<AnimeXApp> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeRegisterDevice();
+      _maybeSyncSubscriptions();
     });
     ref.listenManual<AsyncValue<StoredSession?>>(currentSessionProvider, (_, __) {
       _maybeRegisterDevice();
+      _maybeSyncSubscriptions();
     });
   }
 
@@ -52,6 +54,19 @@ class _AnimeXAppState extends ConsumerState<AnimeXApp> {
       await registerDeviceForPush(source: source, repo: repo);
     } catch (_) {
       // Best-effort: never block app boot on device registration.
+    }
+  }
+
+  Future<void> _maybeSyncSubscriptions() async {
+    try {
+      final session = await ref.read(currentSessionProvider.future);
+      if (session == null || session.token.isEmpty) return;
+      final repo = await ref.read(subscriptionRepositoryProvider.future);
+      final titles = await repo.listSubscribedTitles();
+      final store = await ref.read(subscribedStoreProvider.future);
+      await store.replaceAll(titles);
+    } catch (_) {
+      // Best-effort: missing endpoint or auth issue should not crash boot.
     }
   }
 

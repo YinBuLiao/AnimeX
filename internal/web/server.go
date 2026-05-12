@@ -178,6 +178,7 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("/api/bangumi/discover", s.handleBangumiDiscover)
 	mux.HandleFunc("/api/mikan/schedule", s.handleMikanSchedule)
 	mux.HandleFunc("/api/mikan/subscribe", s.handleMikanSubscribe)
+	mux.HandleFunc("/api/subscriptions", s.handleSubscriptionsList)
 	mux.HandleFunc("/api/download", s.handleDownload)
 	mux.HandleFunc("/api/download/request", s.handleDownloadRequest)
 	mux.HandleFunc("/api/sync", s.handleSync)
@@ -1607,6 +1608,37 @@ type subscribeRequest struct {
 	CoverURL  string `json:"cover_url"`
 	Summary   string `json:"summary"`
 	Language  int    `json:"language"`
+}
+
+// handleSubscriptionsList returns the bangumi titles currently flagged
+// subscribed in the store. Mobile clients hydrate their local
+// SubscribedStore from this so the 已订阅 indicator survives device
+// changes. Available to any authenticated user; subscriptions are
+// global (no per-user filter yet).
+func (s Server) handleSubscriptionsList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, errors.New("请求方法不允许"))
+		return
+	}
+	if _, ok := s.authenticatedUser(r); !ok {
+		writeError(w, http.StatusUnauthorized, errors.New("请先登录"))
+		return
+	}
+	st := s.store()
+	if st == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"titles": []string{}})
+		return
+	}
+	titles, err := st.ListSubscribedTitles(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if titles == nil {
+		titles = []string{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"titles": titles})
 }
 
 func (s Server) handleMikanSubscribe(w http.ResponseWriter, r *http.Request) {
