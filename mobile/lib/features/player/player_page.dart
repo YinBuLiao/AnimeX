@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/cast/cast_device.dart';
 import 'package:animex_mobile/core/cast/cast_manager.dart';
+import 'package:animex_mobile/core/pip/pip_controller.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/features/player/cast_picker_sheet.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
@@ -52,6 +53,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _durationSub = _player.stream.duration.listen((d) {
       if (mounted) setState(() => _duration = d);
     });
+
+    // Auto-enter PiP on home button while a video is loaded. No-op on iOS.
+    PipController.setEnabled(enabled: true);
 
     _open();
   }
@@ -127,6 +131,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void dispose() {
     _maybeReport(force: true);
+    PipController.setEnabled(enabled: false);
     _positionSub?.cancel();
     _durationSub?.cancel();
     _player.dispose();
@@ -196,13 +201,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             Positioned(
               top: 8,
               right: 8,
-              child: IconButton(
-                icon: Icon(
-                  isCasting ? Icons.cast_connected : Icons.cast,
-                  color: Colors.white,
-                ),
-                tooltip: '投屏',
-                onPressed: _openCastPicker,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.picture_in_picture_alt,
+                        color: Colors.white),
+                    tooltip: '画中画',
+                    onPressed: () => PipController.enterNow(),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isCasting ? Icons.cast_connected : Icons.cast,
+                      color: Colors.white,
+                    ),
+                    tooltip: '投屏',
+                    onPressed: _openCastPicker,
+                  ),
+                ],
               ),
             ),
             Positioned(
