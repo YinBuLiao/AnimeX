@@ -10,11 +10,41 @@ import 'package:animex_mobile/features/detail/detail_page.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_launcher.dart';
 
-class HistoryPage extends ConsumerWidget {
+enum _HistoryFilter { all, inProgress, completed }
+
+extension _HistoryFilterLabel on _HistoryFilter {
+  String get label {
+    switch (this) {
+      case _HistoryFilter.all:
+        return '全部';
+      case _HistoryFilter.inProgress:
+        return '进行中';
+      case _HistoryFilter.completed:
+        return '已看完';
+    }
+  }
+
+  bool matches(HistoryEntry e) {
+    if (this == _HistoryFilter.all) return true;
+    if (e.durationSec <= 0) return this == _HistoryFilter.inProgress;
+    final p = e.positionSec / e.durationSec;
+    if (this == _HistoryFilter.completed) return p >= 0.95;
+    return p < 0.95;
+  }
+}
+
+class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends ConsumerState<HistoryPage> {
+  _HistoryFilter _filter = _HistoryFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
     final historyAsync = ref.watch(historyListProvider);
     return Scaffold(
       appBar: AppBar(
@@ -27,30 +57,61 @@ class HistoryPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(historyListProvider),
-        child: historyAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(
-            children: [
-              const SizedBox(height: 80),
-              const Icon(Icons.error_outline, size: 32),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('$e', textAlign: TextAlign.center),
-              ),
-            ],
+      body: Column(
+        children: [
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final f in _HistoryFilter.values)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 6),
+                    child: ChoiceChip(
+                      label: Text(f.label),
+                      selected: _filter == f,
+                      onSelected: (_) => setState(() => _filter = f),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          data: (resp) {
-            if (resp.entries.isEmpty) return const _Empty();
-            return ListView.separated(
-              itemCount: resp.entries.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) =>
-                  _HistoryTile(entry: resp.entries[i]),
-            );
-          },
-        ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(historyListProvider),
+              child: historyAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => ListView(
+                  children: [
+                    const SizedBox(height: 80),
+                    const Icon(Icons.error_outline, size: 32),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text('$e', textAlign: TextAlign.center),
+                    ),
+                  ],
+                ),
+                data: (resp) {
+                  if (resp.entries.isEmpty) return const _Empty();
+                  final filtered =
+                      resp.entries.where(_filter.matches).toList();
+                  if (filtered.isEmpty) {
+                    return _FilteredEmpty(filter: _filter);
+                  }
+                  return ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) =>
+                        _HistoryTile(entry: filtered[i]),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -83,6 +144,31 @@ class HistoryPage extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _FilteredEmpty extends StatelessWidget {
+  final _HistoryFilter filter;
+  const _FilteredEmpty({required this.filter});
+
+  @override
+  Widget build(BuildContext context) {
+    final hint = filter == _HistoryFilter.completed
+        ? '还没有看完任何剧集。'
+        : '没有进行中的观看记录。';
+    return ListView(
+      children: [
+        const SizedBox(height: 80),
+        const Icon(Icons.filter_alt_outlined, size: 32),
+        const SizedBox(height: 12),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(hint, textAlign: TextAlign.center),
+          ),
+        ),
+      ],
+    );
   }
 }
 
