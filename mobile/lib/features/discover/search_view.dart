@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
+import 'package:animex_mobile/core/preferences/search_history.dart';
 import 'package:animex_mobile/data/dtos/search_result.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 
@@ -23,6 +24,23 @@ class _SearchViewState extends ConsumerState<SearchView> {
   String _query = '';
   List<SearchResult>? _results;
   String? _error;
+  SearchHistoryStore? _historyStore;
+  List<String> _history = const <String>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final store = await SearchHistoryStore.load();
+    if (!mounted) return;
+    setState(() {
+      _historyStore = store;
+      _history = store.all;
+    });
+  }
 
   @override
   void dispose() {
@@ -61,6 +79,11 @@ class _SearchViewState extends ConsumerState<SearchView> {
         _results = resp.results;
         _busy = false;
       });
+      final store = _historyStore;
+      if (store != null) {
+        await store.add(q);
+        if (mounted) setState(() => _history = store.all);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -119,7 +142,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
       );
     }
     if (_results == null) {
-      return const Center(child: Text('输入关键词开始搜索'));
+      return _historyBody();
     }
     if (_results!.isEmpty) {
       return Center(child: Text('未找到与 "$_query" 匹配的结果'));
@@ -128,6 +151,63 @@ class _SearchViewState extends ConsumerState<SearchView> {
       itemCount: _results!.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) => _ResultTile(result: _results![i]),
+    );
+  }
+
+  Widget _historyBody() {
+    if (_history.isEmpty) {
+      return const Center(child: Text('输入关键词开始搜索'));
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                '历史搜索',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () async {
+                  await _historyStore?.clear();
+                  if (mounted) setState(() => _history = const <String>[]);
+                },
+                child: const Text('清空'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final q in _history)
+                InputChip(
+                  label: Text(q),
+                  onPressed: () {
+                    _ctrl.text = q;
+                    _ctrl.selection =
+                        TextSelection.collapsed(offset: q.length);
+                    _runSearch(q);
+                  },
+                  onDeleted: () async {
+                    await _historyStore?.remove(q);
+                    if (mounted) {
+                      setState(() => _history =
+                          _historyStore?.all ?? const <String>[]);
+                    }
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
