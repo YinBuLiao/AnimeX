@@ -11,11 +11,34 @@ import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
 
-class LibraryTab extends ConsumerWidget {
+enum _LibraryFilter { all, inProgress, completed }
+
+extension _LibraryFilterLabel on _LibraryFilter {
+  String get label {
+    switch (this) {
+      case _LibraryFilter.all:
+        return '全部';
+      case _LibraryFilter.inProgress:
+        return '进行中';
+      case _LibraryFilter.completed:
+        return '已看完';
+    }
+  }
+}
+
+class LibraryTab extends ConsumerStatefulWidget {
   const LibraryTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryTab> createState() => _LibraryTabState();
+}
+
+class _LibraryTabState extends ConsumerState<LibraryTab> {
+  _LibraryFilter _filter = _LibraryFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final libAsync = ref.watch(libraryListProvider);
     final prefs = ref.watch(appPreferencesProvider);
     return Scaffold(
@@ -43,33 +66,101 @@ class LibraryTab extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(libraryListProvider),
-        child: libAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _libraryError(context, e, () {
-            ref.invalidate(libraryListProvider);
-          }),
-          data: (lib) {
-            if (lib.bangumi.isEmpty) {
-              return const _EmptyState();
-            }
-            final history = ref.watch(historyListProvider).asData?.value
-                    .entries ??
-                const <HistoryEntry>[];
-            final sorted = _sort(
-              lib.bangumi,
-              prefs.librarySort,
-              history,
-            );
-            return _Grid(
-              items: sorted,
-              downloads: ref.watch(downloadEntriesProvider),
-            );
-          },
-        ),
+      body: Column(
+        children: [
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final f in _LibraryFilter.values)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 6),
+                    child: ChoiceChip(
+                      label: Text(f.label),
+                      selected: _filter == f,
+                      onSelected: (_) => setState(() => _filter = f),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(libraryListProvider),
+              child: libAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => _libraryError(context, e, () {
+                  ref.invalidate(libraryListProvider);
+                }),
+                data: (lib) {
+                  if (lib.bangumi.isEmpty) {
+                    return const _EmptyState();
+                  }
+                  final history = ref.watch(historyListProvider).asData?.value
+                          .entries ??
+                      const <HistoryEntry>[];
+                  final filtered =
+                      _applyFilter(lib.bangumi, _filter, history);
+                  if (filtered.isEmpty) {
+                    return _FilteredEmptyState(filter: _filter);
+                  }
+                  final sorted = _sort(
+                    filtered,
+                    prefs.librarySort,
+                    history,
+                  );
+                  return _Grid(
+                    items: sorted,
+                    downloads: ref.watch(downloadEntriesProvider),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<LibraryBangumi> _applyFilter(
+    List<LibraryBangumi> items,
+    _LibraryFilter filter,
+    List<HistoryEntry> history,
+  ) {
+    if (filter == _LibraryFilter.all) return items;
+    final progressByFileId = <String, double>{
+      for (final h in history)
+        if (h.durationSec > 0) h.fileId: h.positionSec / h.durationSec,
+    };
+    bool epWatched(LibraryBangumi b) {
+      return b.episodes.any((ep) {
+        if (ep.files.isEmpty) return false;
+        final p = progressByFileId[ep.files.first.id];
+        return p != null && p > 0;
+      });
+    }
+
+    bool allDone(LibraryBangumi b) {
+      if (b.episodes.isEmpty) return false;
+      return b.episodes.every((ep) {
+        if (ep.files.isEmpty) return false;
+        final p = progressByFileId[ep.files.first.id];
+        return p != null && p >= 0.95;
+      });
+    }
+
+    switch (filter) {
+      case _LibraryFilter.inProgress:
+        return items.where((b) => epWatched(b) && !allDone(b)).toList();
+      case _LibraryFilter.completed:
+        return items.where(allDone).toList();
+      case _LibraryFilter.all:
+        return items;
+    }
   }
 
   List<LibraryBangumi> _sort(
@@ -126,6 +217,31 @@ class LibraryTab extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         Center(child: TextButton(onPressed: onRetry, child: const Text('重试'))),
+      ],
+    );
+  }
+}
+
+class _FilteredEmptyState extends StatelessWidget {
+  final _LibraryFilter filter;
+  const _FilteredEmptyState({required this.filter});
+
+  @override
+  Widget build(BuildContext context) {
+    final hint = filter == _LibraryFilter.completed
+        ? '还没有看完任何番剧。'
+        : '这里暂时没有进行中的番剧。';
+    return ListView(
+      children: [
+        const SizedBox(height: 80),
+        const Icon(Icons.filter_alt_outlined, size: 32),
+        const SizedBox(height: 12),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(hint, textAlign: TextAlign.center),
+          ),
+        ),
       ],
     );
   }
