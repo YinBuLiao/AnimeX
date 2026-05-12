@@ -8,6 +8,7 @@ import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/notifications/device_registrar.dart';
 import 'package:animex_mobile/core/preferences/app_preferences.dart';
 import 'package:animex_mobile/core/preferences/notifications_seen.dart';
+import 'package:animex_mobile/core/preferences/subscribed_store.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/admin_repository.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
@@ -139,6 +140,11 @@ final pushTokenSourceProvider =
 final appPreferencesProvider = ChangeNotifierProvider<AppPreferences>((_) {
   throw StateError(
       'appPreferencesProvider must be overridden at app startup');
+});
+
+/// Best-effort local mirror of bangumi titles the user subscribed to.
+final subscribedStoreProvider = FutureProvider<SubscribedStore>((_) async {
+  return SubscribedStore.load();
 });
 
 /// Persists the "last seen" notification timestamp for the unread badge.

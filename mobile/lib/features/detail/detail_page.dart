@@ -38,6 +38,20 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   String? _subscribeMsg;
   bool _subscribeOk = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _hydrateSubscribedState();
+  }
+
+  Future<void> _hydrateSubscribedState() async {
+    final store = await ref.read(subscribedStoreProvider.future);
+    if (!mounted) return;
+    if (store.isSubscribed(widget.args.title)) {
+      setState(() => _subscribeOk = true);
+    }
+  }
+
   Future<void> _subscribe() async {
     setState(() {
       _subscribing = true;
@@ -51,6 +65,8 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         coverUrl: widget.args.coverUrl,
         summary: widget.args.summary,
       );
+      final store = await ref.read(subscribedStoreProvider.future);
+      await store.add(widget.args.title);
       setState(() {
         _subscribeOk = true;
         _subscribeMsg = '订阅成功';
