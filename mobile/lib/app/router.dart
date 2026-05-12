@@ -10,6 +10,7 @@ import 'package:animex_mobile/features/detail/detail_page.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
+import 'package:animex_mobile/features/downloads/downloads_page.dart';
 import 'package:animex_mobile/features/history/history_page.dart';
 import 'package:animex_mobile/features/home/home_page.dart';
 import 'package:animex_mobile/features/library/library_tab.dart';
@@ -105,6 +106,10 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/history',
         builder: (_, __) => const HistoryPage(),
+      ),
+      GoRoute(
+        path: '/downloads',
+        builder: (_, __) => const DownloadsPage(),
       ),
       GoRoute(
         path: '/player',

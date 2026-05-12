@@ -20,6 +20,10 @@ class PlayerArgs {
   /// Seconds to seek to on open (0 = start from beginning).
   final int initialPositionSec;
 
+  /// Optional absolute filesystem path. If present and the file exists, the
+  /// player opens this directly without going through the network.
+  final String? localPath;
+
   const PlayerArgs({
     required this.url,
     required this.fileId,
@@ -28,5 +32,6 @@ class PlayerArgs {
     this.episode,
     this.coverUrl,
     this.initialPositionSec = 0,
+    this.localPath,
   });
 }

@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/app/router.dart';
 import 'package:animex_mobile/app/theme.dart';
+import 'package:animex_mobile/core/download/download_manager.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
-  runApp(const ProviderScope(child: AnimeXApp()));
+  final downloads = await DownloadManager.create();
+  runApp(ProviderScope(
+    overrides: [
+      downloadManagerProvider.overrideWithValue(downloads),
+    ],
+    child: const AnimeXApp(),
+  ));
 }
 
 class AnimeXApp extends ConsumerWidget {

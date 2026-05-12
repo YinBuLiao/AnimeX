@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:animex_mobile/core/auth/session_store.dart';
 import 'package:animex_mobile/core/config/server_config.dart';
+import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
 import 'package:animex_mobile/data/repositories/discover_repository.dart';
@@ -92,3 +93,15 @@ final currentSessionProvider = FutureProvider<StoredSession?>((ref) async {
   final sessions = ref.watch(sessionStoreProvider);
   return sessions.load();
 });
+
+/// App-wide download manager (background_downloader singleton). Initialized
+/// at boot in main(); subscribers should use [downloadEntriesProvider]
+/// instead of reading this directly so they auto-rebuild on progress.
+final downloadManagerProvider = Provider<DownloadManager>((_) {
+  throw StateError(
+      'downloadManagerProvider must be overridden at app startup');
+});
+
+/// Reactive list of download entries, rebuilt on every manager notify.
+final downloadEntriesProvider = ChangeNotifierProvider<DownloadManager>(
+    (ref) => ref.watch(downloadManagerProvider));

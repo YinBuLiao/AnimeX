@@ -22,6 +22,9 @@ dependencies:
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
   wakelock_plus: ^1.2.8
+  background_downloader: ^8.7.4
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

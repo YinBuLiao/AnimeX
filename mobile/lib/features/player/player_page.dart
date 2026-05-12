@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,8 +54,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   Future<void> _open() async {
-    final session =
-        await ref.read(sessionStoreProvider).load();
+    // Prefer the local file if a completed download exists on disk —
+    // playback works offline and bypasses redirect/auth.
+    final local = widget.args.localPath;
+    if (local != null && local.isNotEmpty) {
+      try {
+        if (await File(local).exists()) {
+          await _player.open(Media(local));
+          return;
+        }
+      } catch (_) {
+        // Fall through to network playback.
+      }
+    }
+    final session = await ref.read(sessionStoreProvider).load();
     final headers = <String, String>{};
     if (session != null && session.token.isNotEmpty) {
       headers['Authorization'] = 'Bearer ${session.token}';

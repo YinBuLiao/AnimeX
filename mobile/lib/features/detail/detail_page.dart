@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
+import 'package:animex_mobile/data/dtos/download_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
@@ -192,6 +193,7 @@ class _EpisodeGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final configAsync = ref.watch(serverConfigProvider);
     final historyAsync = ref.watch(historyListProvider);
+    final downloads = ref.watch(downloadEntriesProvider);
     final baseUrl = configAsync.maybeWhen(
       data: (c) => c.baseUrl.trimRight(),
       orElse: () => '',
@@ -218,25 +220,147 @@ class _EpisodeGrid extends ConsumerWidget {
                 .map((e) => e.positionSec)
                 .followedBy(const [0])
                 .first;
-        return OutlinedButton(
-          onPressed: file == null || baseUrl.isEmpty
-              ? null
-              : () => context.push(
-                    '/player',
-                    extra: PlayerArgs(
-                      url: _absoluteUrl(baseUrl, file.streamUrl),
-                      fileId: file.id,
-                      title: '${bangumi.title} · ${ep.label}',
-                      bangumiTitle: bangumi.title,
-                      episode: ep.label,
-                      coverUrl: bangumi.coverUrl ?? detailArgs.coverUrl,
-                      initialPositionSec: resumeSec,
-                    ),
-                  ),
-          child: Text(ep.label, overflow: TextOverflow.ellipsis),
+        final dlEntry = file == null ? null : downloads.entryFor(file.id);
+        return Stack(
+          children: [
+            OutlinedButton(
+              onPressed: file == null || baseUrl.isEmpty
+                  ? null
+                  : () => context.push(
+                        '/player',
+                        extra: PlayerArgs(
+                          url: _absoluteUrl(baseUrl, file.streamUrl),
+                          fileId: file.id,
+                          title: '${bangumi.title} · ${ep.label}',
+                          bangumiTitle: bangumi.title,
+                          episode: ep.label,
+                          coverUrl: bangumi.coverUrl ?? detailArgs.coverUrl,
+                          initialPositionSec: resumeSec,
+                          localPath: dlEntry?.isComplete == true
+                              ? dlEntry!.localPath
+                              : null,
+                        ),
+                      ),
+              onLongPress: file == null || baseUrl.isEmpty
+                  ? null
+                  : () => _showEpisodeMenu(
+                        context,
+                        ref,
+                        bangumi: bangumi,
+                        episode: ep,
+                        file: file,
+                        baseUrl: baseUrl,
+                        existing: dlEntry,
+                      ),
+              child: Text(ep.label, overflow: TextOverflow.ellipsis),
+            ),
+            if (dlEntry != null)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: _DownloadBadge(entry: dlEntry),
+              ),
+          ],
         );
       },
     );
+  }
+}
+
+class _DownloadBadge extends StatelessWidget {
+  final DownloadEntry entry;
+  const _DownloadBadge({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (entry.status) {
+      case DownloadStatus.complete:
+        return Icon(Icons.cloud_done,
+            size: 14, color: Theme.of(context).colorScheme.primary);
+      case DownloadStatus.running:
+      case DownloadStatus.queued:
+        return SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            value: entry.progress > 0 ? entry.progress : null,
+          ),
+        );
+      case DownloadStatus.paused:
+        return const Icon(Icons.pause_circle_outline, size: 14);
+      case DownloadStatus.failed:
+        return Icon(Icons.error_outline,
+            size: 14, color: Theme.of(context).colorScheme.error);
+      case DownloadStatus.canceled:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+Future<void> _showEpisodeMenu(
+  BuildContext context,
+  WidgetRef ref, {
+  required LibraryBangumi bangumi,
+  required Episode episode,
+  required PlayableFile file,
+  required String baseUrl,
+  required DownloadEntry? existing,
+}) async {
+  final manager = ref.read(downloadManagerProvider);
+  final canDownload = existing == null ||
+      existing.status == DownloadStatus.failed ||
+      existing.status == DownloadStatus.canceled;
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('下载该集'),
+            enabled: canDownload,
+            onTap: () => Navigator.pop(ctx, 'download'),
+          ),
+          if (existing != null &&
+              existing.status != DownloadStatus.complete)
+            ListTile(
+              leading: const Icon(Icons.cancel_outlined),
+              title: const Text('取消下载'),
+              onTap: () => Navigator.pop(ctx, 'cancel'),
+            ),
+          if (existing != null)
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('删除离线文件'),
+              onTap: () => Navigator.pop(ctx, 'delete'),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (action == null) return;
+  switch (action) {
+    case 'download':
+      final session = await ref.read(sessionStoreProvider).load();
+      final headers = <String, String>{};
+      if (session != null && session.token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${session.token}';
+      }
+      await manager.enqueue(
+        fileId: file.id,
+        url: _absoluteUrl(baseUrl, file.streamUrl),
+        bangumiTitle: bangumi.title,
+        episode: episode.label,
+        fileName: file.name,
+        coverUrl: bangumi.coverUrl,
+        headers: headers,
+      );
+    case 'cancel':
+      await manager.cancel(file.id);
+    case 'delete':
+      await manager.deleteEntry(file.id);
   }
 }
 

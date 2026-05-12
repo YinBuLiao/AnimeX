@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:animex_mobile/app/providers.dart';
+import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/network/api_exception.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
@@ -17,6 +19,13 @@ class LibraryTab extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('媒体库'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_download_outlined),
+            tooltip: '下载',
+            onPressed: () => context.push('/downloads'),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(libraryListProvider),
@@ -29,7 +38,10 @@ class LibraryTab extends ConsumerWidget {
             if (lib.bangumi.isEmpty) {
               return const _EmptyState();
             }
-            return _Grid(items: lib.bangumi);
+            return _Grid(
+              items: lib.bangumi,
+              downloads: ref.watch(downloadEntriesProvider),
+            );
           },
         ),
       ),
@@ -59,7 +71,18 @@ class LibraryTab extends ConsumerWidget {
 
 class _Grid extends StatelessWidget {
   final List<LibraryBangumi> items;
-  const _Grid({required this.items});
+  final DownloadManager downloads;
+  const _Grid({required this.items, required this.downloads});
+
+  bool _bangumiHasOffline(LibraryBangumi b) {
+    for (final ep in b.episodes) {
+      for (final f in ep.files) {
+        if (downloads.isComplete(f.id)) return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
@@ -82,25 +105,49 @@ class _Grid extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: (b.coverUrl == null || b.coverUrl!.isEmpty)
-                    ? Container(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        child: const Icon(Icons.image_not_supported_outlined),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(b.coverUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                  child: const Icon(
-                                      Icons.broken_image_outlined),
-                                )),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: (b.coverUrl == null || b.coverUrl!.isEmpty)
+                          ? Container(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              child: const Icon(
+                                  Icons.image_not_supported_outlined),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.network(b.coverUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest,
+                                        child: const Icon(
+                                            Icons.broken_image_outlined),
+                                      )),
+                            ),
+                    ),
+                    if (_bangumiHasOffline(b))
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.cloud_done,
+                              size: 12, color: Colors.white),
+                        ),
                       ),
+                  ],
+                ),
               ),
               const SizedBox(height: 4),
               Text(
