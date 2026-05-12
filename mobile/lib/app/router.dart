@@ -9,6 +9,12 @@ import 'package:animex_mobile/features/detail/detail_args.dart';
 import 'package:animex_mobile/features/detail/detail_page.dart';
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_page.dart';
+import 'package:animex_mobile/features/admin/admin_logs_page.dart';
+import 'package:animex_mobile/features/admin/admin_monitor_page.dart';
+import 'package:animex_mobile/features/admin/admin_overview_page.dart';
+import 'package:animex_mobile/features/admin/admin_requests_page.dart';
+import 'package:animex_mobile/features/admin/admin_tab.dart';
+import 'package:animex_mobile/features/admin/admin_web_placeholder_page.dart';
 import 'package:animex_mobile/features/discover/discover_tab.dart';
 import 'package:animex_mobile/features/downloads/downloads_page.dart';
 import 'package:animex_mobile/features/history/history_page.dart';
@@ -74,23 +80,7 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(
         path: '/',
-        builder: (_, __) => AppShell(
-          tabs: const [
-            HomePage(),
-            DiscoverTab(),
-            LibraryTab(),
-            ProfileTab(),
-          ],
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home_outlined), label: '首页'),
-            NavigationDestination(
-                icon: Icon(Icons.explore_outlined), label: '发现'),
-            NavigationDestination(
-                icon: Icon(Icons.video_library_outlined), label: '媒体库'),
-            NavigationDestination(
-                icon: Icon(Icons.person_outline), label: '我的'),
-          ],
-        ),
+        builder: (_, __) => const _RootShell(),
       ),
       GoRoute(
         path: '/detail',
@@ -113,6 +103,57 @@ GoRouter buildRouter(Ref ref) {
         builder: (_, __) => const NotificationsPage(),
       ),
       GoRoute(
+        path: '/admin/overview',
+        builder: (_, __) => const AdminOverviewPage(),
+      ),
+      GoRoute(
+        path: '/admin/monitor',
+        builder: (_, __) => const AdminMonitorPage(),
+      ),
+      GoRoute(
+        path: '/admin/download-requests',
+        builder: (_, __) => const AdminRequestsPage(),
+      ),
+      GoRoute(
+        path: '/admin/logs',
+        builder: (_, __) => const AdminLogsPage(),
+      ),
+      GoRoute(
+        path: '/admin/web/users',
+        builder: (_, __) => const AdminWebPlaceholderPage(
+          title: '用户管理',
+          webPath: '/admin#users',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/web/invite-codes',
+        builder: (_, __) => const AdminWebPlaceholderPage(
+          title: '邀请码',
+          webPath: '/admin#invites',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/web/anime',
+        builder: (_, __) => const AdminWebPlaceholderPage(
+          title: '番剧管理',
+          webPath: '/admin#anime',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/web/storage',
+        builder: (_, __) => const AdminWebPlaceholderPage(
+          title: '储存桶配置',
+          webPath: '/admin#storage',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/web/settings',
+        builder: (_, __) => const AdminWebPlaceholderPage(
+          title: '系统设置',
+          webPath: '/admin#settings',
+        ),
+      ),
+      GoRoute(
         path: '/downloads',
         builder: (_, __) => const DownloadsPage(),
       ),
@@ -133,3 +174,36 @@ GoRouter buildRouter(Ref ref) {
 }
 
 final routerProvider = Provider<GoRouter>(buildRouter);
+
+class _RootShell extends ConsumerWidget {
+  const _RootShell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(currentSessionProvider);
+    final isAdmin = session.maybeWhen(
+      data: (s) => s?.role == 'admin',
+      orElse: () => false,
+    );
+    final tabs = <Widget>[
+      const HomePage(),
+      const DiscoverTab(),
+      const LibraryTab(),
+      if (isAdmin) const AdminTab(),
+      const ProfileTab(),
+    ];
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(icon: Icon(Icons.home_outlined), label: '首页'),
+      const NavigationDestination(
+          icon: Icon(Icons.explore_outlined), label: '发现'),
+      const NavigationDestination(
+          icon: Icon(Icons.video_library_outlined), label: '媒体库'),
+      if (isAdmin)
+        const NavigationDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined), label: '管理'),
+      const NavigationDestination(
+          icon: Icon(Icons.person_outline), label: '我的'),
+    ];
+    return AppShell(tabs: tabs, destinations: destinations);
+  }
+}

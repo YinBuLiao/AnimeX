@@ -7,6 +7,7 @@ import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/notifications/device_registrar.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
+import 'package:animex_mobile/data/repositories/admin_repository.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
 import 'package:animex_mobile/data/repositories/discover_repository.dart';
 import 'package:animex_mobile/data/repositories/history_repository.dart';
@@ -95,6 +96,11 @@ final notificationsRepositoryProvider =
     FutureProvider<NotificationsRepository>((ref) async {
   final dio = await ref.watch(dioProvider.future);
   return NotificationsRepository(dio);
+});
+
+final adminRepositoryProvider = FutureProvider<AdminRepository>((ref) async {
+  final dio = await ref.watch(dioProvider.future);
+  return AdminRepository(dio);
 });
 
 /// Cached "is the user logged in" check — used by router redirect.
