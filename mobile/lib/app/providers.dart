@@ -6,6 +6,7 @@ import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/config/server_config.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/notifications/device_registrar.dart';
+import 'package:animex_mobile/core/preferences/app_preferences.dart';
 import 'package:animex_mobile/core/network/dio_client.dart';
 import 'package:animex_mobile/data/repositories/admin_repository.dart';
 import 'package:animex_mobile/data/repositories/auth_repository.dart';
@@ -131,3 +132,10 @@ final castManagerProvider = ChangeNotifierProvider<CastManager>(
 /// implementation once a Firebase project is wired up.
 final pushTokenSourceProvider =
     Provider<PushTokenSource>((_) => const NoopPushTokenSource());
+
+/// App-wide preferences (toggles, default volume, …). Loaded at boot and
+/// exposed as a ChangeNotifier so widgets rebuild on change.
+final appPreferencesProvider = ChangeNotifierProvider<AppPreferences>((_) {
+  throw StateError(
+      'appPreferencesProvider must be overridden at app startup');
+});

@@ -8,14 +8,17 @@ import 'package:animex_mobile/app/theme.dart';
 import 'package:animex_mobile/core/auth/session_store.dart';
 import 'package:animex_mobile/core/download/download_manager.dart';
 import 'package:animex_mobile/core/notifications/device_registrar.dart';
+import 'package:animex_mobile/core/preferences/app_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   final downloads = await DownloadManager.create();
+  final prefs = await AppPreferences.load();
   runApp(ProviderScope(
     overrides: [
       downloadManagerProvider.overrideWithValue(downloads),
+      appPreferencesProvider.overrideWith((_) => prefs),
     ],
     child: const AnimeXApp(),
   ));

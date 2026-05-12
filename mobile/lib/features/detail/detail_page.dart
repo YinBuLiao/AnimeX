@@ -221,6 +221,26 @@ class _EpisodeGrid extends ConsumerWidget {
                 .followedBy(const [0])
                 .first;
         final dlEntry = file == null ? null : downloads.entryFor(file.id);
+        // Build full playlist so PlayerPage can auto-advance.
+        final playlist = <PlayerArgs>[];
+        if (baseUrl.isNotEmpty) {
+          for (final pep in bangumi.episodes) {
+            if (pep.files.isEmpty) continue;
+            final pf = pep.files.first;
+            final pDl = downloads.entryFor(pf.id);
+            playlist.add(PlayerArgs(
+              url: _absoluteUrl(baseUrl, pf.streamUrl),
+              fileId: pf.id,
+              title: '${bangumi.title} · ${pep.label}',
+              bangumiTitle: bangumi.title,
+              episode: pep.label,
+              coverUrl: bangumi.coverUrl ?? detailArgs.coverUrl,
+              localPath: pDl?.isComplete == true ? pDl!.localPath : null,
+            ));
+          }
+        }
+        final pIndex =
+            file == null ? -1 : playlist.indexWhere((a) => a.fileId == file.id);
         return Stack(
           children: [
             OutlinedButton(
@@ -239,6 +259,8 @@ class _EpisodeGrid extends ConsumerWidget {
                           localPath: dlEntry?.isComplete == true
                               ? dlEntry!.localPath
                               : null,
+                          playlist: playlist,
+                          currentIndex: pIndex < 0 ? 0 : pIndex,
                         ),
                       ),
               onLongPress: file == null || baseUrl.isEmpty

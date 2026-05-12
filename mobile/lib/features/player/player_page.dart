@@ -32,6 +32,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<bool>? _playingSub;
+  StreamSubscription<bool>? _completedSub;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _playing = false;
@@ -41,9 +42,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _controlsVisible = true;
   Timer? _controlsTimer;
 
+  /// Args of the currently loaded media. Mutable so auto-advance can swap
+  /// the source in place without growing the router stack.
+  late PlayerArgs _args;
+
   @override
   void initState() {
     super.initState();
+    _args = widget.args;
     _player = Player();
     _videoController = VideoController(_player);
 
@@ -61,6 +67,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _playingSub = _player.stream.playing.listen((p) {
       if (mounted) setState(() => _playing = p);
     });
+    _completedSub = _player.stream.completed.listen((done) {
+      if (done) _onPlaybackEnded();
+    });
     _resetControlsTimer();
 
     // Auto-enter PiP on home button while a video is loaded. No-op on iOS.
@@ -69,10 +78,31 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _open();
   }
 
+  Future<void> _onPlaybackEnded() async {
+    if (!mounted) return;
+    _maybeReport(force: true);
+    final autoPlay = ref.read(appPreferencesProvider).autoPlayNext;
+    final next = _args.next;
+    if (!autoPlay || next == null) return;
+    setState(() {
+      _args = next.copyWithReset();
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _seekedInitial = false;
+      _controlsVisible = true;
+    });
+    _resetControlsTimer();
+    await _open();
+  }
+
   Future<void> _open() async {
+    // Apply default-volume preference once per load.
+    final preferredVolume = ref.read(appPreferencesProvider).defaultVolume;
+    await _player.setVolume(preferredVolume);
+
     // Prefer the local file if a completed download exists on disk —
     // playback works offline and bypasses redirect/auth.
-    final local = widget.args.localPath;
+    final local = _args.localPath;
     if (local != null && local.isNotEmpty) {
       try {
         if (await File(local).exists()) {
@@ -88,7 +118,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (session != null && session.token.isNotEmpty) {
       headers['Authorization'] = 'Bearer ${session.token}';
     }
-    await _player.open(Media(widget.args.url, httpHeaders: headers));
+    await _player.open(Media(_args.url, httpHeaders: headers));
   }
 
   void _onPosition(Duration p) {
@@ -98,10 +128,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // Seek to initial position once playback has actually started (player
     // reports first non-zero position when buffering is done).
     if (!_seekedInitial &&
-        widget.args.initialPositionSec > 5 &&
+        _args.initialPositionSec > 5 &&
         _duration.inSeconds > 0) {
       _seekedInitial = true;
-      _player.seek(Duration(seconds: widget.args.initialPositionSec));
+      _player.seek(Duration(seconds: _args.initialPositionSec));
     }
 
     _maybeReport();
@@ -121,11 +151,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Future<void> _reportHistory() async {
     final repo = await ref.read(historyRepositoryProvider.future);
     final entry = HistoryEntry(
-      fileId: widget.args.fileId,
-      url: widget.args.url,
-      bangumiTitle: widget.args.bangumiTitle,
-      episode: widget.args.episode,
-      coverUrl: widget.args.coverUrl,
+      fileId: _args.fileId,
+      url: _args.url,
+      bangumiTitle: _args.bangumiTitle,
+      episode: _args.episode,
+      coverUrl: _args.coverUrl,
       positionSec: _position.inSeconds,
       durationSec: _duration.inSeconds,
       updatedAt: 0,
@@ -159,6 +189,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _positionSub?.cancel();
     _durationSub?.cancel();
     _playingSub?.cancel();
+    _completedSub?.cancel();
     _player.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -186,8 +217,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     await _player.pause();
     await manager.cast(
       device: device,
-      url: widget.args.url,
-      title: widget.args.title,
+      url: _args.url,
+      title: _args.title,
       position: _position,
     );
   }
@@ -231,7 +262,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               child: IgnorePointer(
                 ignoring: !_controlsVisible,
                 child: _PlayerChrome(
-                  title: widget.args.title,
+                  title: _args.title,
                   position: _position,
                   duration: _duration,
                   playing: _playing,

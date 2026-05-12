@@ -23,6 +23,7 @@ import 'package:animex_mobile/features/library/library_tab.dart';
 import 'package:animex_mobile/features/notifications/notifications_page.dart';
 import 'package:animex_mobile/features/profile/profile_tab.dart';
 import 'package:animex_mobile/features/server_setup/server_setup_page.dart';
+import 'package:animex_mobile/features/settings/settings_page.dart';
 import 'package:animex_mobile/features/shell/app_shell.dart';
 import 'package:flutter/material.dart';
 
@@ -101,6 +102,10 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(
         path: '/notifications',
         builder: (_, __) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (_, __) => const SettingsPage(),
       ),
       GoRoute(
         path: '/admin/overview',
