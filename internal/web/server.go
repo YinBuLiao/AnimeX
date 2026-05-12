@@ -55,6 +55,7 @@ type Server struct {
 	Storage      storage.Provider
 	Store        *store.MySQLStore
 	Cache        *cache.RedisCache
+	Version      string
 }
 
 type downloadRequest struct {
@@ -170,6 +171,7 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("/api/install/test/mysql", s.handleInstallTestMySQL)
 	mux.HandleFunc("/api/install/test/redis", s.handleInstallTestRedis)
 	mux.HandleFunc("/api/status", s.handleStatus)
+	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/library", s.handleLibrary)
 	mux.HandleFunc("/api/search", s.handleSearch)
 	mux.HandleFunc("/api/bangumi/discover", s.handleBangumiDiscover)

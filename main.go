@@ -26,6 +26,8 @@ import (
 	"bangumi-pikpak/internal/web"
 )
 
+const appVersion = "dev"
+
 func main() {
 	configDBPath := flag.String("configdb", config.DefaultLocalDBPath, "path to local SQLite config database")
 	intervalSeconds := flag.Int("interval", 600, "RSS polling interval in seconds")
@@ -78,7 +80,7 @@ func main() {
 		if *webMode {
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			webServer := web.Server{Config: cfg, ConfigDBPath: *configDBPath, LocalDB: localDB, InstallOnly: true, HTTPClient: http.DefaultClient, Logger: log, TorrentRoot: "torrent", StaticDir: *staticDir}
+			webServer := web.Server{Config: cfg, ConfigDBPath: *configDBPath, LocalDB: localDB, InstallOnly: true, HTTPClient: http.DefaultClient, Logger: log, TorrentRoot: "torrent", StaticDir: *staticDir, Version: appVersion}
 			httpServer := &http.Server{Addr: *addr, Handler: webServer.Handler()}
 			errCh := make(chan error, 1)
 			go func() {
@@ -138,7 +140,7 @@ func main() {
 	defer stop()
 
 	if *webMode {
-		webServer := web.Server{Config: cfg, ConfigDBPath: *configDBPath, LocalDB: localDB, HTTPClient: proxy.HTTPClient(), Logger: log, TorrentRoot: "torrent", StaticDir: *staticDir, PikPak: pp, Storage: storageProvider, Store: mysqlStore, Cache: redisCache}
+		webServer := web.Server{Config: cfg, ConfigDBPath: *configDBPath, LocalDB: localDB, HTTPClient: proxy.HTTPClient(), Logger: log, TorrentRoot: "torrent", StaticDir: *staticDir, PikPak: pp, Storage: storageProvider, Store: mysqlStore, Cache: redisCache, Version: appVersion}
 		httpServer := &http.Server{Addr: *addr, Handler: webServer.Handler()}
 		errCh := make(chan error, 1)
 		go func() {
