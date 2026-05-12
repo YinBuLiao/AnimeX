@@ -143,14 +143,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (mounted && _playbackError != null) {
       setState(() => _playbackError = null);
     }
+    // Guard against PlayerArgs with no url (e.g. history entry lost its url
+    // field, or upstream stub built without resolving baseUrl). Showing the
+    // error overlay is friendlier than mpv silently hanging on an empty src.
+    final local = _args.localPath;
+    final hasLocal = local != null && local.isNotEmpty;
+    if (!hasLocal && _args.url.trim().isEmpty) {
+      if (mounted) setState(() => _playbackError = '没有可播放的地址');
+      return;
+    }
     // Apply default-volume preference once per load.
     final preferredVolume = ref.read(appPreferencesProvider).defaultVolume;
     await _player.setVolume(preferredVolume);
 
     // Prefer the local file if a completed download exists on disk —
     // playback works offline and bypasses redirect/auth.
-    final local = _args.localPath;
-    if (local != null && local.isNotEmpty) {
+    if (hasLocal) {
       try {
         if (await File(local).exists()) {
           await _player.open(Media(local));
