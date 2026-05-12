@@ -32,8 +32,9 @@ AnimeX 当前形态：
    - 推送通知（番剧更新提醒、审批提醒）
    - 原生视频播放（画中画 / 锁屏控制 / 后台音频 / 外连耳机路由）
    - 投屏（AirPlay / Chromecast / DLNA）
-4. 代码可由 AI 全量产出，开发者只需负责调试与签名打包
-5. 不上架 App Store，iOS 输出 IPA 通过侧载/自签分发
+4. **远程接入任意 AnimeX 服务器**：APP 内可配置 Server URL（含端口）、支持 HTTP/HTTPS、支持自签证书、支持切换服务器
+5. 代码可由 AI 全量产出，开发者只需负责调试与签名打包
+6. 不上架 App Store，iOS 输出 IPA 通过侧载/自签分发
 
 ### 非目标
 
@@ -60,6 +61,8 @@ AnimeX 当前形态：
 | 状态管理 | Riverpod | Bloc / Provider | 强类型、轻量、与异步代码生成器集成好 |
 | 路由 | go_router | Navigator 2.0 自写 | 官方推荐、声明式 |
 | 认证 | 复用现有 session token，APP 用 Bearer header | JWT / OAuth | 后端改动最小 |
+| 服务器配置 | 单服务器，可切换；URL + 自签证书开关 + 测试连接 | 多 Profile 同时存在 | YAGNI；切换服务器清登录态即可 |
+| 凭证 | 仅用户名 + 密码（无额外 API Key） | Pre-shared key / 设备 token | 简化，不要求后端新增 secret 管理 |
 | 管理员复杂表单 | 手机端只读，编辑跳 Web | 全量实现 | 手机 UX 差、出错率高 |
 | iOS 默认产物 | unsigned IPA + 三种签名指南 | 直接签名 | 用户根据自己条件选签名路线 |
 
@@ -113,6 +116,46 @@ AnimeX/
 ```
 
 ## 5. 页面与导航
+
+### 5.0 启动流程与服务器配置
+
+APP 在所有 Tab 之前有一个**连接层**。冷启动时按这个顺序判断：
+
+```
+冷启动
+  └─ 本地是否已配置 Server URL？
+       ├─ 否 → 进入「服务器连接页」
+       └─ 是 → 本地是否有有效 session token？
+              ├─ 否 → 进入「登录页」
+              └─ 是 → 后台 GET /api/me 验证 token
+                     ├─ 401 → 清 token，回「登录页」
+                     └─ 200 → 进入主 Tab
+```
+
+**服务器连接页**（首启动 / 设置里"更换服务器"入口都会进）：
+
+```
+┌──────────────────────────────────────┐
+│  AnimeX                              │
+│  ──────                              │
+│  服务器地址                          │
+│  [ https://anime.example.com:8080 ]  │
+│                                      │
+│  ☐ 忽略 HTTPS 证书错误（自签证书勾选）│
+│                                      │
+│  [        测试连接        ]          │
+│  [        下一步：登录    ]          │
+└──────────────────────────────────────┘
+```
+
+- "测试连接"：APP 调 `GET /api/health`（**后端需新增**，匿名可访问，返回版本号与"是否已完成 install 向导"标志），成功才允许"下一步"
+- "忽略证书错误"：勾选后 Dio 的 `HttpClient.badCertificateCallback` 返回 true，给一个明显的安全提示弹窗（"仅在你完全信任此服务器时启用"）
+- URL 校验：必须以 `http://` 或 `https://` 起始，端口可选；末尾自动 trim 斜杠
+- 配置存储：`flutter_secure_storage`（Keychain / Keystore），key 名 `server_url`、`allow_self_signed_cert`
+
+**登录页**：服务器 URL 在右上角小字显示（避免误连），底部"更换服务器"链接回连接页。
+
+**设置里的"更换服务器"**：清除 token + URL 配置 → 回到服务器连接页。下载到本机的离线视频文件**不清**（属于设备资产，跨服务器复用也无意义但留着也无害；新服务器登录后媒体库匹配不上即可视为孤儿，让用户在"下载管理"页手动清理）。
 
 ### 5.1 主框架（底 Tab）
 
@@ -217,6 +260,8 @@ Tab 切换不销毁页面状态（IndexedStack）。
 
 | 接口 | 方法 | 用途 |
 |---|---|---|
+| `/api/health` | GET | 匿名可访问，返回 `{version, installed: bool, server_name?: string}`，供 APP 测试连接 |
+| `/api/me` | GET | 已存在则复用；返回当前 token 对应用户，APP 用于启动时校验 token 是否还有效 |
 | `/api/auth/mobile-login` | POST | 入参 `{username, password}`，返回 `{token, expires_at, role, username}` |
 | 现有受保护接口 | — | auth middleware 增加 `Authorization: Bearer <token>` 解析路径（与 cookie 二选一） |
 | `/api/devices/register` | POST | 入参 `{fcm_token, platform: ios\|android}`，与当前用户绑定 |
@@ -285,7 +330,7 @@ GitHub Actions：
 
 | M | 内容 | 估算编码会话 |
 |---|---|---|
-| M1 | Flutter 脚手架 + Dio + 主题 + 登录 + 首页空壳 | 1 |
+| M1 | Flutter 脚手架 + Dio（含自签 HTTPS 开关）+ 主题 + 服务器连接页 + 登录 + `/api/health` + 首页空壳 | 1 |
 | M2 | 发现 / 搜索 / 详情 / 订阅 浏览闭环（不含播放）| 1–2 |
 | M3 | 原生播放器 + 画中画 + 后台音频 + 观看进度 | 1–2 |
 | M4 | 媒体库 + 后台离线下载 + 离线播放 | 1–2 |
