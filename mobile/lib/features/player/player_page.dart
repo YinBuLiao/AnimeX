@@ -38,8 +38,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   StreamSubscription<double>? _rateSub;
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<Track>? _trackSub;
+  StreamSubscription<String>? _errorSub;
   Tracks _tracks = const Tracks();
   Track _selectedTrack = const Track();
+  String? _playbackError;
   double _rate = 1.0;
   Timer? _sleepTimer;
   bool _sleepEndOfEpisode = false;
@@ -89,6 +91,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _trackSub = _player.stream.track.listen((t) {
       if (mounted) setState(() => _selectedTrack = t);
     });
+    _errorSub = _player.stream.error.listen((msg) {
+      if (msg.isEmpty || !mounted) return;
+      setState(() {
+        _playbackError = msg;
+        _controlsVisible = true;
+      });
+    });
     _resetControlsTimer();
 
     // Auto-enter PiP on home button while a video is loaded. No-op on iOS.
@@ -126,6 +135,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   Future<void> _open() async {
+    if (mounted && _playbackError != null) {
+      setState(() => _playbackError = null);
+    }
     // Apply default-volume preference once per load.
     final preferredVolume = ref.read(appPreferencesProvider).defaultVolume;
     await _player.setVolume(preferredVolume);
@@ -224,6 +236,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _rateSub?.cancel();
     _tracksSub?.cancel();
     _trackSub?.cancel();
+    _errorSub?.cancel();
     _player.dispose();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -369,6 +382,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
   }
 
+  Future<void> _retryPlayback() async {
+    // mpv keeps the failed source loaded; stop first so a re-open actually
+    // re-fetches instead of hitting the cached failure state.
+    try {
+      await _player.stop();
+    } catch (_) {}
+    await _open();
+  }
+
   Future<void> _pickTracks() async {
     if (_tracks.audio.isEmpty && _tracks.subtitle.isEmpty) {
       if (mounted) {
@@ -484,6 +506,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 ),
               ),
             ),
+            if (_playbackError != null && !isCasting)
+              Positioned.fill(
+                child: _ErrorOverlay(
+                  message: _playbackError!,
+                  onRetry: _retryPlayback,
+                  onClose: () => Navigator.of(context).pop(),
+                ),
+              ),
             if (isCasting)
               Positioned.fill(
                 child: _CastOverlay(
@@ -578,6 +608,71 @@ class _CastOverlay extends StatelessWidget {
                   label: const Text('结束投屏',
                       style: TextStyle(color: Colors.white)),
                   onPressed: onStop,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorOverlay extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+  final VoidCallback onClose;
+
+  const _ErrorOverlay({
+    required this.message,
+    required this.onRetry,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.9),
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline,
+                color: Colors.redAccent, size: 56),
+            const SizedBox(height: 16),
+            const Text(
+              '播放失败',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重试'),
+                  onPressed: onRetry,
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  label: const Text('关闭',
+                      style: TextStyle(color: Colors.white70)),
+                  onPressed: onClose,
                 ),
               ],
             ),
