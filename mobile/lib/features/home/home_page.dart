@@ -6,7 +6,8 @@ import 'package:animex_mobile/app/providers.dart';
 import 'package:animex_mobile/data/dtos/history_entry.dart';
 import 'package:animex_mobile/data/dtos/library_bangumi.dart';
 import 'package:animex_mobile/features/detail/detail_args.dart';
-import 'package:animex_mobile/features/detail/detail_page.dart' show libraryListProvider;
+import 'package:animex_mobile/features/detail/detail_page.dart'
+    show libraryListProvider, historyListProvider;
 import 'package:animex_mobile/features/player/player_args.dart';
 import 'package:animex_mobile/features/player/player_launcher.dart';
 
@@ -172,6 +173,7 @@ class _HistoryCard extends ConsumerWidget {
       width: 120,
       child: InkWell(
         onTap: () => _launch(context, ref, title: title, ep: ep),
+        onLongPress: () => _showMenu(context, ref, title: title),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -251,6 +253,57 @@ class _HistoryCard extends ConsumerWidget {
       initialPositionSec: entry.positionSec,
     );
     context.push('/player', extra: args);
+  }
+
+  Future<void> _showMenu(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+  }) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('查看详情'),
+              onTap: () => Navigator.of(ctx).pop('detail'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('从历史移除'),
+              onTap: () => Navigator.of(ctx).pop('remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || action == null) return;
+    if (action == 'detail') {
+      context.push(
+        '/detail',
+        extra: DetailArgs(
+          title: entry.bangumiTitle,
+          coverUrl: entry.coverUrl,
+        ),
+      );
+      return;
+    }
+    if (action == 'remove') {
+      try {
+        final repo = await ref.read(historyRepositoryProvider.future);
+        await repo.remove(entry.fileId);
+        ref.invalidate(_historyProvider);
+        ref.invalidate(historyListProvider);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('移除失败：$e')));
+        }
+      }
+    }
   }
 
   Widget _cover(BuildContext ctx, String? url) {
