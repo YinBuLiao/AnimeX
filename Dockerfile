@@ -1,10 +1,13 @@
 FROM golang:1.25-alpine AS backend-build
+ARG APP_VERSION=dev
 WORKDIR /src
 COPY go.mod go.sum ./
 COPY third_party/ ./third_party/
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/bangumi-pikpak .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w -X main.appVersion=${APP_VERSION}" \
+    -o /out/bangumi-pikpak .
 
 FROM node:22-alpine AS frontend-build
 WORKDIR /src/frontend
