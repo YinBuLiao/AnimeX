@@ -1,0 +1,73 @@
+name: Server Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Cross-compile server (linux/${{ matrix.goarch }})
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          go build -trimpath \
+            -ldflags="-s -w -X main.appVersion=${VERSION}" \
+            -o bangumi-pikpak .
+
+      - name: Package tarball
+        run: |
+          STAGE="animex-server-linux-${{ matrix.goarch }}"
+          mkdir -p "$STAGE/frontend"
+          mv bangumi-pikpak "$STAGE/bangumi-pikpak"
+          chmod +x "$STAGE/bangumi-pikpak"
+          cp -r frontend/dist "$STAGE/frontend/dist"
+          tar -czf "${STAGE}.tar.gz" "$STAGE"
+          ls -lh "${STAGE}.tar.gz"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: animex-server-linux-${{ matrix.goarch }}-${{ github.ref_name }}
+          path: animex-server-linux-${{ matrix.goarch }}.tar.gz
+          if-no-files-found: error
+
+      - name: Attach tarball to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: animex-server-linux-${{ matrix.goarch }}.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true

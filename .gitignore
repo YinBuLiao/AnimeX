@@ -1,3 +1,6 @@
+# Local release artifacts produced by manual cross-compile / packaging
+release-artifacts/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
