@@ -28,29 +28,35 @@ jobs:
       - name: CocoaPods install
         run: pod install --project-directory=ios
 
-      - name: Build .xcarchive (no codesign)
-        run: flutter build ipa --no-codesign
+      - name: Build Runner.app (no codesign)
+        # `flutter build ipa --no-codesign` still hands the archive to
+        # `xcodebuild -exportArchive`, which insists on a Team even with
+        # signingCertificate=-. Build the .app directly and skip the
+        # archive/export step entirely.
+        run: flutter build ios --release --no-codesign
 
-      - name: Export unsigned IPA
+      - name: Package Runner.app into IPA
         run: |
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ios/ipa-unsigned \
-            -exportOptionsPlist ios/export_unsigned.plist
-          ls -la build/ios/ipa-unsigned
+          cd build/ios/iphoneos
+          rm -rf Payload AnimeX-release.ipa
+          mkdir Payload
+          cp -R Runner.app Payload/Runner.app
+          zip -qry AnimeX-release.ipa Payload
+          rm -rf Payload
+          ls -la AnimeX-release.ipa
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: animex-ios-unsigned-${{ github.ref_name }}
-          path: mobile/build/ios/ipa-unsigned/*.ipa
+          path: mobile/build/ios/iphoneos/AnimeX-release.ipa
           if-no-files-found: error
 
       - name: Attach IPA to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile/build/ios/ipa-unsigned/*.ipa
+          files: mobile/build/ios/iphoneos/AnimeX-release.ipa
           fail_on_unmatched_files: true
           generate_release_notes: true
           body: |
