@@ -333,9 +333,27 @@ docker.io/yinbuliao/bangumi-pikpak
 | `latest` | 最新稳定构建（当前指向 v1.0.0） |
 | `v1.0.0` | 2026-05 首个正式版，含原生 Android + iOS 客户端 |
 
+最快上手（自带 MySQL / Redis，只想先看一眼）：
+
 ```bash
+# 拉取
 docker pull yinbuliao/bangumi-pikpak:latest
+
+# 启动（不带 DB，仅作演示；生产请走下面的一体化部署）
+docker run -d \
+  --name animex \
+  -p 8080:8080 \
+  -v $PWD/animex-data:/app/data \
+  --restart unless-stopped \
+  yinbuliao/bangumi-pikpak:latest
+
+# 看日志，等启动完成
+docker logs -f animex
 ```
+
+启动后访问 `http://服务器IP:8080`，第一次会跳出安装向导让你填 MySQL / Redis 地址、设定管理员密码。
+
+> 正式部署建议直接用下一节的「一体化部署」，省去自己维护 MySQL / Redis。
 
 ### 一体化部署（推荐）
 
