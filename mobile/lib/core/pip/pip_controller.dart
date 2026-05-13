@@ -8,30 +8,9 @@ import 'package:flutter/services.dart';
 class PipController {
   static const _channel = MethodChannel('animex/pip');
 
-  /// Tell the platform to auto-enter PiP on the next onUserLeaveHint
-  /// (home button / app switcher). aspect = video width / height ratio.
-  /// Returns true if PiP is supported and the request was accepted.
-  static Future<bool> setEnabled({
-    required bool enabled,
-    int aspectNumerator = 16,
-    int aspectDenominator = 9,
-  }) async {
-    if (!Platform.isAndroid) return false;
-    try {
-      final ok = await _channel.invokeMethod<bool>('setEnabled', {
-        'enabled': enabled,
-        'aspectNumerator': aspectNumerator,
-        'aspectDenominator': aspectDenominator,
-      });
-      return ok ?? false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
-
-  /// Enter PiP immediately (used by an in-player button).
+  /// Enter PiP immediately. Called by the player page's in-app PiP button
+  /// and from a WidgetsBindingObserver when the app moves to the inactive
+  /// state — so only the player page can trigger PiP, never other tabs.
   static Future<bool> enterNow() async {
     if (!Platform.isAndroid) return false;
     try {

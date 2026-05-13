@@ -29,7 +29,8 @@ class PlayerPage extends ConsumerStatefulWidget {
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends ConsumerState<PlayerPage> {
+class _PlayerPageState extends ConsumerState<PlayerPage>
+    with WidgetsBindingObserver {
   late final Player _player;
   late final VideoController _videoController;
 
@@ -66,6 +67,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _args = widget.args;
     _player = Player();
     _videoController = VideoController(_player);
@@ -116,11 +118,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       });
     });
     _resetControlsTimer();
-
-    // Auto-enter PiP on home button while a video is loaded. No-op on iOS.
-    PipController.setEnabled(enabled: true);
-
     _open();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only this page enters PiP on home — observer is unregistered in
+    // dispose, so navigating away from the player guarantees the home
+    // button just backgrounds the app normally.
+    if (state == AppLifecycleState.inactive && _playing) {
+      PipController.enterNow();
+    }
   }
 
   Future<void> _onPlaybackEnded() async {
@@ -254,7 +262,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // Drop the cached history list so home / detail / history pages pick up
     // the position we just wrote on the next read.
     ref.invalidate(historyListProvider);
-    PipController.setEnabled(enabled: false);
+    WidgetsBinding.instance.removeObserver(this);
     _controlsTimer?.cancel();
     _lockHintTimer?.cancel();
     _sleepTimer?.cancel();
@@ -266,16 +274,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _tracksSub?.cancel();
     _trackSub?.cancel();
     _errorSub?.cancel();
-    // Stop playback before tearing down — otherwise the libmpv audio task
-    // can outlive the page on Android and you hear sound on other tabs.
-    unawaited(_player.stop().whenComplete(_player.dispose));
+    // pause() silences audio synchronously enough that the user doesn't
+    // hear leftover sound; stop() releases mpv state; dispose() frees
+    // the native player. Fire-and-forget — we can't await in dispose().
+    final player = _player;
+    unawaited(() async {
+      try { await player.pause(); } catch (_) {}
+      try { await player.stop(); } catch (_) {}
+      try { await player.dispose(); } catch (_) {}
+    }());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Force the device back to portrait. Listing all four orientations would
+    // let the system stay in landscape if the phone happens to be held that
+    // way; restricting to portrait makes Android physically rotate back.
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
   }

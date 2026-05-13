@@ -10,26 +10,12 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "animex/pip"
-    private var pipEnabled: Boolean = false
-    private var aspectNumerator: Int = 16
-    private var aspectDenominator: Int = 9
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "setEnabled" -> {
-                        pipEnabled = (call.argument<Boolean>("enabled") ?: false) &&
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                        call.argument<Int>("aspectNumerator")?.let {
-                            if (it > 0) aspectNumerator = it
-                        }
-                        call.argument<Int>("aspectDenominator")?.let {
-                            if (it > 0) aspectDenominator = it
-                        }
-                        result.success(pipEnabled)
-                    }
                     "enterNow" -> {
                         result.success(enterPip())
                     }
@@ -41,18 +27,11 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (pipEnabled) {
-            enterPip()
-        }
-    }
-
     private fun enterPip(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         return try {
             val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(aspectNumerator, aspectDenominator))
+                .setAspectRatio(Rational(16, 9))
                 .build()
             enterPictureInPictureMode(params)
         } catch (e: IllegalStateException) {
