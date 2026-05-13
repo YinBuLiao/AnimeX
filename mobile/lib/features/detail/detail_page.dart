@@ -104,7 +104,6 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         onRefresh: () async {
           ref.invalidate(libraryListProvider);
           ref.invalidate(historyListProvider);
-          ref.invalidate(downloadEntriesProvider);
           await ref.read(libraryListProvider.future);
         },
         child: ListView(

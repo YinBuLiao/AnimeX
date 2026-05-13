@@ -122,6 +122,11 @@ final downloadManagerProvider = Provider<DownloadManager>((_) {
 });
 
 /// Reactive list of download entries, rebuilt on every manager notify.
+///
+/// NEVER call `ref.invalidate` on this provider — `ChangeNotifierProvider`
+/// owns its ChangeNotifier and `dispose()`s it on invalidate, which would
+/// kill the singleton manager and leave every other watcher reading a
+/// disposed instance.
 final downloadEntriesProvider = ChangeNotifierProvider<DownloadManager>(
     (ref) => ref.watch(downloadManagerProvider));
 
