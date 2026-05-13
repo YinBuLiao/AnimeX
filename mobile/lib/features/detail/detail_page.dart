@@ -398,6 +398,11 @@ class _EpisodeGrid extends ConsumerWidget {
         return Stack(
           children: [
             OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               onPressed: file == null || baseUrl.isEmpty
                   ? null
                   : () => context.push(

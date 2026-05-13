@@ -82,7 +82,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       if (mounted) setState(() => _duration = d);
     });
     _playingSub = _player.stream.playing.listen((p) {
-      if (mounted) setState(() => _playing = p);
+      if (!mounted) return;
+      setState(() {
+        _playing = p;
+        // libmpv emits non-fatal warnings on `stream.error` for things like
+        // unsupported alternate tracks. If playback is actually running,
+        // those are not real failures — clear the overlay.
+        if (p && _playbackError != null) _playbackError = null;
+      });
     });
     _completedSub = _player.stream.completed.listen((done) {
       if (done) _onPlaybackEnded();
@@ -254,7 +261,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _tracksSub?.cancel();
     _trackSub?.cancel();
     _errorSub?.cancel();
-    _player.dispose();
+    // Stop playback before tearing down — otherwise the libmpv audio task
+    // can outlive the page on Android and you hear sound on other tabs.
+    unawaited(_player.stop().whenComplete(_player.dispose));
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(const [
