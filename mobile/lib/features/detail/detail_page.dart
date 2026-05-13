@@ -346,10 +346,10 @@ class _EpisodeGrid extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 64,
+        maxCrossAxisExtent: 88,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 1.4,
+        childAspectRatio: 2.0,
       ),
       itemCount: episodes.length,
       itemBuilder: (context, i) {

@@ -105,6 +105,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     });
     _errorSub = _player.stream.error.listen((msg) {
       if (msg.isEmpty || !mounted) return;
+      // libmpv emits warnings on this stream for non-fatal things like
+      // "could not open codec" on a secondary audio/subtitle track. If
+      // playback is actually running, the main track is fine and we
+      // shouldn't slap an overlay over a working video.
+      if (_playing || _position > Duration.zero) return;
       setState(() {
         _playbackError = msg;
         _controlsVisible = true;

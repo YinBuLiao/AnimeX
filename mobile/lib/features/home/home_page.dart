@@ -145,7 +145,7 @@ class _ContinueWatchingSection extends ConsumerWidget {
           onMore: () => context.push('/history'),
         ),
         SizedBox(
-          height: 200,
+          height: 220,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
