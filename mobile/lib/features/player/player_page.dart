@@ -64,6 +64,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
   /// the source in place without growing the router stack.
   late PlayerArgs _args;
 
+  bool _exiting = false;
+
   @override
   void initState() {
     super.initState();
@@ -129,6 +131,27 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
     if (state == AppLifecycleState.inactive && _playing) {
       PipController.enterNow();
     }
+  }
+
+  /// The single exit path: silence the player, restore portrait, then pop.
+  /// Triggered by the system back gesture (via PopScope) and the close
+  /// button. Doing this BEFORE pop guarantees audio is muted and the
+  /// orientation animation runs while the page is still alive — without
+  /// this, the async cleanup chained off dispose() races the user's eyes
+  /// and ears.
+  Future<void> _shutdownAndPop() async {
+    if (_exiting) return;
+    _exiting = true;
+    try { await _player.setVolume(0); } catch (_) {}
+    try { await _player.pause(); } catch (_) {}
+    try { await _player.stop(); } catch (_) {}
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   Future<void> _onPlaybackEnded() async {
@@ -523,7 +546,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
     final isCasting = cast.activeDevice != null &&
         cast.status != CastSessionStatus.idle &&
         cast.status != CastSessionStatus.error;
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _shutdownAndPop();
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
@@ -565,7 +594,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
                   duration: _duration,
                   playing: _playing,
                   isCasting: isCasting,
-                  onClose: () => Navigator.of(context).pop(),
+                  onClose: _shutdownAndPop,
                   onTogglePlay: () {
                     _playing ? _player.pause() : _player.play();
                     _resetControlsTimer();
@@ -618,7 +647,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
                 child: _ErrorOverlay(
                   message: _playbackError!,
                   onRetry: _retryPlayback,
-                  onClose: () => Navigator.of(context).pop(),
+                  onClose: _shutdownAndPop,
                 ),
               ),
             if (isCasting)
@@ -634,6 +663,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
               ),
           ],
         ),
+      ),
       ),
     );
   }
