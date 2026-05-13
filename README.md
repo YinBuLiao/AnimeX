@@ -318,36 +318,49 @@ Z:\AnimeX
 
 ## Docker 部署
 
-### 已发布镜像
+### 一体化部署（推荐）
 
-镜像已经发布到 Docker Hub：
-
-```text
-docker.io/yinbuliao/bangumi-pikpak
-```
-
-可用标签：
-
-| 标签 | 说明 |
-|---|---|
-| `latest` | 最新稳定构建 |
-| `20260425` | 2026-04-25 构建快照 |
-
-拉取镜像：
+仓库自带 `docker-compose.full.yml`，一次性启动 AnimeX + MySQL + Redis，首次运行会自动生成 MySQL / 管理员密码并写到 `docker-data/secrets/`。
 
 ```bash
-docker pull yinbuliao/bangumi-pikpak:latest
+git clone https://github.com/YinBuLiao/AnimeX.git
+cd AnimeX
+docker compose -f docker-compose.full.yml up -d
 ```
 
-**首次启动会随机生成 MySQL 密码，并输出到终端，同时保存到：**
+启动日志末尾会打印随机生成的管理员密码：
 
 ```text
-docker-data/secrets/mysql_password.txt
-docker-data/secrets/mysql_root_password.txt
-docker-data/secrets/admin_password.txt
+==> AnimeX admin credentials
+    username: admin
+    password: <16 位随机串>
 ```
 
-### 单容器运行
+密码同时写到：
+
+```text
+docker-data/secrets/admin_password.txt
+docker-data/secrets/mysql_password.txt
+docker-data/secrets/mysql_root_password.txt
+```
+
+访问：
+
+```text
+http://服务器IP:8080
+```
+
+### 从源码本地构建镜像
+
+```bash
+docker build -t animex:latest .
+```
+
+镜像名 `animex:latest`，10 MB 上下（多阶段构建，前端 + Go 静态二进制）。
+
+### 单容器运行（自带 MySQL / Redis）
+
+如果你已经有 MySQL / Redis 实例：
 
 ```bash
 docker run -d \
@@ -361,13 +374,7 @@ docker run -d \
   -e ANIMEX_MYSQL_PASSWORD=你的MySQL密码 \
   -e ANIMEX_REDIS_ADDR=你的Redis地址:6379 \
   --restart unless-stopped \
-  yinbuliao/bangumi-pikpak:latest
-```
-
-访问：
-
-```text
-http://服务器IP:8080
+  animex:latest
 ```
 
 本地配置数据库会保存在宿主机：
@@ -376,8 +383,39 @@ http://服务器IP:8080
 /path/to/animex-data/animex.db
 ```
 
-> 单容器模式只包含 AnimeX 程序本体，不包含 MySQL 和 Redis。  
-> 如果你不想单独准备数据库，推荐使用下面的一体化部署。
+---
+
+## 移动端 App
+
+AnimeX 提供原生 Android + iOS 客户端（基于 Flutter），与 Web 共用同一套后端。功能包括：
+
+- 媒体库 / 发现 / 搜索 / 历史 / 下载管理
+- 内置 media_kit 播放器，支持音轨/字幕切换、倍速、睡眠定时、外挂播放
+- 安卓 PiP 画中画、横竖屏自动切换
+- 后台离线下载（background_downloader）
+- 完整管理面板（用户 / 邀请码 / 番剧 / 储存桶 / 系统设置）
+
+### 安装
+
+到 [GitHub Releases](https://github.com/YinBuLiao/AnimeX/releases) 下载最新版本：
+
+| 平台 | 文件 | 说明 |
+|---|---|---|
+| Android | `app-release.apk` | debug 签名，直接装。已装旧版的话先卸载（签名不同会拒装） |
+| iOS（未签名） | `AnimeX-release.ipa` | 用 Sideloadly / AltStore 自签后安装；TrollStore 支持的系统可直接装 |
+| iOS（自己签） | 同上 | 在 Xcode 打开 `mobile/ios/Runner.xcworkspace`，配 Team 后直接 ▶️ |
+
+### 连接服务器
+
+App 启动后填后端地址：
+
+```text
+http://你的服务器IP:8080
+```
+
+同一 Wi-Fi 下手机访问 Mac/PC 自部署的实例时，用局域网 IP（不是 `127.0.0.1`）。HTTPS 反代过的实例用 `https://...`。
+
+账号密码就是 Web 上那套，admin 默认密码在 `docker-data/secrets/admin_password.txt`。
 
 ## 工作流程
 
