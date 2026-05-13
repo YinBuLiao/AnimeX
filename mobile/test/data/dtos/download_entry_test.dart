@@ -33,7 +33,7 @@ void main() {
 
   group('DownloadEntry.toJson/fromJson', () {
     test('round-trips with all fields', () {
-      final e = DownloadEntry(
+      const e = DownloadEntry(
         fileId: 'f1',
         bangumiTitle: 'Frieren',
         episode: '01',
@@ -58,7 +58,7 @@ void main() {
     });
 
     test('omits null episode / cover_url in json', () {
-      final j = DownloadEntry(
+      final j = const DownloadEntry(
         fileId: 'f',
         bangumiTitle: 'X',
         fileName: 'y',

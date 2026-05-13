@@ -63,7 +63,7 @@ void main() {
         'duration_sec': 1440,
       },
     );
-    final entry = HistoryEntry(
+    const entry = HistoryEntry(
       fileId: 'f1',
       bangumiTitle: 'Frieren',
       episode: '01',

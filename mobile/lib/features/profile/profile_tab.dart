@@ -36,7 +36,7 @@ class _HealthStatusRow extends ConsumerWidget {
           spacing: 6,
           runSpacing: 4,
           children: [
-            _Pill(label: '在线', ok: true),
+            const _Pill(label: '在线', ok: true),
             _Pill(label: 'Mikan', ok: h.mikanConfigured),
             _Pill(label: 'MySQL', ok: h.mysqlReady),
             _Pill(label: '存储', ok: h.pikpakConfigured),

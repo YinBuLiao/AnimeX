@@ -4,7 +4,6 @@ import 'package:animex_mobile/core/cast/cast_device.dart';
 import 'package:animex_mobile/core/cast/cast_manager.dart';
 import 'package:animex_mobile/core/cast/dlna_device.dart';
 import 'package:animex_mobile/core/cast/dlna_renderer.dart';
-import 'package:animex_mobile/core/cast/dlna_soap.dart';
 
 class _RecordingTransport {
   final List<String> actions = [];
@@ -84,11 +83,11 @@ void main() {
 
   test('AirPlay/Chromecast cast surfaces UnimplementedError', () async {
     final manager = CastManager();
-    final dev = CastDevice(
+    const dev = CastDevice(
       kind: CastKind.chromecast,
       id: 'chromecast:abc',
       name: 'Living Room',
-      payload: const Object(),
+      payload: Object(),
     );
     await manager.cast(device: dev, url: 'http://x/v.mp4');
     expect(manager.status, CastSessionStatus.error);

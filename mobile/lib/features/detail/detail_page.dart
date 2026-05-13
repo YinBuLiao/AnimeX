@@ -360,7 +360,7 @@ class _EpisodeGrid extends ConsumerWidget {
             ? null
             : history.firstWhere(
                 (e) => e.fileId == file.id,
-                orElse: () => HistoryEntry(
+                orElse: () => const HistoryEntry(
                   fileId: '',
                   bangumiTitle: '',
                   positionSec: 0,

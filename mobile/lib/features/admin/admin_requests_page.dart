@@ -147,7 +147,7 @@ class _AdminRequestsPageState extends ConsumerState<AdminRequestsPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: Icon(Icons.check_circle_outline,
+                                  icon: const Icon(Icons.check_circle_outline,
                                       color: Colors.green),
                                   tooltip: '通过',
                                   onPressed: () => _act(r, 'approve'),

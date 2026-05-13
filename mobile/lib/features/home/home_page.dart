@@ -51,15 +51,15 @@ class HomePage extends ConsumerWidget {
               children: [
                 _Greeting(username: s.username),
                 const SizedBox(height: 16),
-                _ContinueWatchingSection(),
+                const _ContinueWatchingSection(),
                 const SizedBox(height: 16),
-                _LibrarySection(
+                const _LibrarySection(
                   title: '最近更新',
                   emptyHint: '订阅番剧后会出现在这里',
                   showAll: false,
                 ),
                 const SizedBox(height: 16),
-                _LibrarySection(
+                const _LibrarySection(
                   title: '我的订阅',
                   emptyHint: '在「发现」中订阅番剧',
                   showAll: true,
@@ -115,6 +115,8 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _ContinueWatchingSection extends ConsumerWidget {
+  const _ContinueWatchingSection();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_historyProvider);
@@ -123,9 +125,9 @@ class _ContinueWatchingSection extends ConsumerWidget {
       orElse: () => const <HistoryEntry>[],
     );
     if (async.isLoading) {
-      return Column(
+      return const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
+        children: [
           _SectionHeader(title: '继续观看'),
           SizedBox(
             height: 170,

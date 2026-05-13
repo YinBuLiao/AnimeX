@@ -137,17 +137,17 @@ class _AdminInviteCodesPageState extends ConsumerState<AdminInviteCodesPage> {
                       : (c.expiresAt.isEmpty
                           ? '创建于 ${c.createdAt}'
                           : '创建于 ${c.createdAt} · 到期 ${c.expiresAt}'),
-                  style: TextStyle(fontSize: 11),
+                  style: const TextStyle(fontSize: 11),
                 ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (v == 'copy') {
+                      final messenger = ScaffoldMessenger.of(context);
                       await Clipboard.setData(ClipboardData(text: c.code));
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('已复制')),
-                        );
-                      }
+                      if (!mounted) return;
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('已复制')),
+                      );
                     } else if (v == 'delete') {
                       _delete(c.code);
                     }
