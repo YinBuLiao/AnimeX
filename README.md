@@ -318,14 +318,34 @@ Z:\AnimeX
 
 ## Docker 部署
 
+### 已发布镜像
+
+镜像已发布到 Docker Hub：
+
+```text
+docker.io/yinbuliao/bangumi-pikpak
+```
+
+可用标签：
+
+| 标签 | 说明 |
+|---|---|
+| `latest` | 最新稳定构建（当前指向 v1.0.0） |
+| `v1.0.0` | 2026-05 首个正式版，含原生 Android + iOS 客户端 |
+
+```bash
+docker pull yinbuliao/bangumi-pikpak:latest
+```
+
 ### 一体化部署（推荐）
 
-仓库自带 `docker-compose.full.yml`，一次性启动 AnimeX + MySQL + Redis，首次运行会自动生成 MySQL / 管理员密码并写到 `docker-data/secrets/`。
+仓库自带 `docker-compose.full.yml`，一次性启动 AnimeX + MySQL + Redis，首次运行会自动生成 MySQL / 管理员密码写到 `docker-data/secrets/`。
 
 ```bash
 git clone https://github.com/YinBuLiao/AnimeX.git
 cd AnimeX
 docker compose -f docker-compose.full.yml up -d
+docker compose -f docker-compose.full.yml logs -f animex
 ```
 
 启动日志末尾会打印随机生成的管理员密码：
@@ -336,7 +356,7 @@ docker compose -f docker-compose.full.yml up -d
     password: <16 位随机串>
 ```
 
-密码同时写到：
+密码同时落盘：
 
 ```text
 docker-data/secrets/admin_password.txt
@@ -350,13 +370,14 @@ docker-data/secrets/mysql_root_password.txt
 http://服务器IP:8080
 ```
 
-### 从源码本地构建镜像
+升级时：
 
 ```bash
-docker build -t animex:latest .
+docker compose -f docker-compose.full.yml pull
+docker compose -f docker-compose.full.yml up -d
 ```
 
-镜像名 `animex:latest`，10 MB 上下（多阶段构建，前端 + Go 静态二进制）。
+数据保存在宿主机 `docker-data/`，升级镜像不会丢配置 / 历史。
 
 ### 单容器运行（自带 MySQL / Redis）
 
@@ -374,14 +395,18 @@ docker run -d \
   -e ANIMEX_MYSQL_PASSWORD=你的MySQL密码 \
   -e ANIMEX_REDIS_ADDR=你的Redis地址:6379 \
   --restart unless-stopped \
-  animex:latest
+  yinbuliao/bangumi-pikpak:latest
 ```
 
-本地配置数据库会保存在宿主机：
+本地 SQLite 配置库会落在 `/path/to/animex-data/animex.db`。
 
-```text
-/path/to/animex-data/animex.db
+### 从源码本地构建
+
+```bash
+docker build -t animex:latest .
 ```
+
+10 MB 左右（多阶段构建：Go 静态二进制 + 编译好的 Vue 前端）。
 
 ---
 
