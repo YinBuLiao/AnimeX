@@ -42,7 +42,10 @@ func TestHandleHealthReturnsVersion(t *testing.T) {
 func TestHandleHealthReturnsInstalledTrue(t *testing.T) {
 	s := Server{
 		Version: "test-v1",
-		Runtime: &RuntimeState{Installed: true},
+		Runtime: &RuntimeState{
+			Config:    config.Config{RequireLogin: false},
+			Installed: true,
+		},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rr := httptest.NewRecorder()
@@ -52,13 +55,14 @@ func TestHandleHealthReturnsInstalledTrue(t *testing.T) {
 		t.Fatalf("status: got %d want 200; body=%s", rr.Code, rr.Body.String())
 	}
 	var body struct {
-		OK        bool `json:"ok"`
-		Installed bool `json:"installed"`
+		OK           bool `json:"ok"`
+		Installed    bool `json:"installed"`
+		RequireLogin bool `json:"require_login"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !body.OK || !body.Installed {
+	if !body.OK || !body.Installed || body.RequireLogin {
 		t.Fatalf("expected installed=true; got %+v", body)
 	}
 }

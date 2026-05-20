@@ -117,8 +117,7 @@ final currentSessionProvider = FutureProvider<StoredSession?>((ref) async {
 /// at boot in main(); subscribers should use [downloadEntriesProvider]
 /// instead of reading this directly so they auto-rebuild on progress.
 final downloadManagerProvider = Provider<DownloadManager>((_) {
-  throw StateError(
-      'downloadManagerProvider must be overridden at app startup');
+  throw StateError('downloadManagerProvider must be overridden at app startup');
 });
 
 /// Reactive list of download entries, rebuilt on every manager notify.
@@ -132,8 +131,8 @@ final downloadEntriesProvider = ChangeNotifierProvider<DownloadManager>(
 
 /// Singleton CastManager for the active player session. Lazily created on
 /// first read so SSDP discovery only happens when the user opens the picker.
-final castManagerProvider = ChangeNotifierProvider<CastManager>(
-    (ref) => CastManager());
+final castManagerProvider =
+    ChangeNotifierProvider<CastManager>((ref) => CastManager());
 
 /// Source of the FCM device token. Default is a no-op so the app builds
 /// without Firebase. Override at app startup with a firebase_messaging
@@ -144,8 +143,7 @@ final pushTokenSourceProvider =
 /// App-wide preferences (toggles, default volume, …). Loaded at boot and
 /// exposed as a ChangeNotifier so widgets rebuild on change.
 final appPreferencesProvider = ChangeNotifierProvider<AppPreferences>((_) {
-  throw StateError(
-      'appPreferencesProvider must be overridden at app startup');
+  throw StateError('appPreferencesProvider must be overridden at app startup');
 });
 
 /// Best-effort local mirror of bangumi titles the user subscribed to.
@@ -164,6 +162,16 @@ final notificationsSeenStoreProvider =
 final healthInfoProvider = FutureProvider.autoDispose<HealthInfo>((ref) async {
   final repo = await ref.watch(systemRepositoryProvider.future);
   return repo.health();
+});
+
+/// Server auth policy used by startup routing. Missing/older health payloads
+/// default to "login required" in HealthInfo for compatibility.
+final requireLoginProvider = FutureProvider<bool>((ref) async {
+  final config = await ref.watch(serverConfigProvider.future);
+  if (!config.isComplete) return true;
+  final repo = await ref.watch(systemRepositoryProvider.future);
+  final health = await repo.health();
+  return !health.installed || health.requireLogin;
 });
 
 /// Pending admin download-request count for the bottom-nav badge. Admin

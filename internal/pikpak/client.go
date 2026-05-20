@@ -242,10 +242,27 @@ func (g *GoAPI) GetDownloadUrl(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return preferredDownloadURL(file)
+}
+
+func preferredDownloadURL(file *pikpakgo.File) (string, error) {
+	if file == nil {
+		return "", fmt.Errorf("pikpak file is nil")
+	}
+	firstMediaURL := ""
 	for _, media := range file.Medias {
-		if media != nil && media.Link != nil && media.Link.URL != "" {
+		if media == nil || media.Link == nil || strings.TrimSpace(media.Link.URL) == "" {
+			continue
+		}
+		if firstMediaURL == "" {
+			firstMediaURL = media.Link.URL
+		}
+		if browserCompatibleMedia(media) {
 			return media.Link.URL, nil
 		}
+	}
+	if firstMediaURL != "" {
+		return firstMediaURL, nil
 	}
 	if file.WebContentLink != "" {
 		return file.WebContentLink, nil
@@ -253,7 +270,18 @@ func (g *GoAPI) GetDownloadUrl(id string) (string, error) {
 	if file.Links != nil && file.Links.ApplicationOctetStream != nil {
 		return file.Links.ApplicationOctetStream.URL, nil
 	}
-	return "", fmt.Errorf("pikpak file %s has no playable download URL", id)
+	return "", fmt.Errorf("pikpak file %s has no playable download URL", file.ID)
+}
+
+func browserCompatibleMedia(media *pikpakgo.Media) bool {
+	codec := strings.ToLower(strings.TrimSpace(media.Video.VideoCodec))
+	codec = strings.ReplaceAll(codec, ".", "")
+	codec = strings.ReplaceAll(codec, "-", "")
+	codec = strings.ReplaceAll(codec, "_", "")
+	if codec == "" {
+		return false
+	}
+	return codec == "h264" || codec == "avc" || strings.HasPrefix(codec, "avc1")
 }
 
 func (g *GoAPI) BatchDeleteFiles(ids []string) error {

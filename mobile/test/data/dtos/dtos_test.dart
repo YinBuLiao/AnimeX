@@ -9,19 +9,23 @@ void main() {
       'ok': true,
       'version': 'v0.2.0',
       'installed': true,
+      'require_login': false,
     });
     expect(h.version, 'v0.2.0');
     expect(h.installed, isTrue);
+    expect(h.requireLogin, isFalse);
   });
 
   test('HealthInfo.fromJson tolerates missing fields', () {
     final h = HealthInfo.fromJson(const {});
     expect(h.version, '');
     expect(h.installed, isFalse);
+    expect(h.requireLogin, isTrue);
   });
 
   test('AppUser.fromJson parses /api/auth/me payload', () {
-    final u = AppUser.fromJson({'ok': true, 'username': 'alice', 'role': 'admin'});
+    final u =
+        AppUser.fromJson({'ok': true, 'username': 'alice', 'role': 'admin'});
     expect(u.username, 'alice');
     expect(u.role, 'admin');
     expect(u.isAdmin, isTrue);

@@ -26,7 +26,7 @@ void main() {
     expect(find.widgetWithText(TextButton, '退出登录'), findsNothing);
   });
 
-  testWidgets('home shows "未登录" when no session is stored', (tester) async {
+  testWidgets('home greets guests when no session is stored', (tester) async {
     final sessions = InMemorySessionStore();
     await tester.pumpWidget(ProviderScope(
       overrides: [
@@ -36,6 +36,6 @@ void main() {
     ));
     await tester.pump();
     await tester.pump();
-    expect(find.text('未登录'), findsOneWidget);
+    expect(find.textContaining('访客'), findsOneWidget);
   });
 }

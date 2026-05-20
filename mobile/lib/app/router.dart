@@ -34,19 +34,23 @@ import 'package:flutter/material.dart';
 
 class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(Ref ref) {
-    ref.listen<AsyncValue<ServerConfig>>(serverConfigProvider,
-        (_, __) => notifyListeners());
-    ref.listen<AsyncValue<StoredSession?>>(currentSessionProvider,
-        (_, __) => notifyListeners());
+    ref.listen<AsyncValue<ServerConfig>>(
+        serverConfigProvider, (_, __) => notifyListeners());
+    ref.listen<AsyncValue<StoredSession?>>(
+        currentSessionProvider, (_, __) => notifyListeners());
+    ref.listen<AsyncValue<bool>>(
+        requireLoginProvider, (_, __) => notifyListeners());
   }
 }
 
 String decideStartRoute({
   required ServerConfig config,
   required StoredSession? session,
+  bool requireLogin = true,
   DateTime Function()? clock,
 }) {
   if (!config.isComplete) return '/setup';
+  if (!requireLogin) return '/';
   if (session == null || session.token.isEmpty) return '/login';
   final now = (clock ?? DateTime.now)().millisecondsSinceEpoch ~/ 1000;
   if (session.expiresAtSec > 0 && session.expiresAtSec <= now) return '/login';
@@ -61,17 +65,30 @@ GoRouter buildRouter(Ref ref) {
     redirect: (context, state) {
       final configAsync = ref.read(serverConfigProvider);
       final sessionAsync = ref.read(currentSessionProvider);
+      final requireLoginAsync = ref.read(requireLoginProvider);
       final config = configAsync.asData?.value;
       final session = sessionAsync.asData?.value;
+      final requireLogin = requireLoginAsync.asData?.value ?? true;
       // While initial data still loading, stay where we are.
-      if (configAsync.isLoading || sessionAsync.isLoading) return null;
+      if (configAsync.isLoading ||
+          sessionAsync.isLoading ||
+          (config?.isComplete == true && requireLoginAsync.isLoading)) {
+        return null;
+      }
       if (config == null) return null;
 
-      final desired = decideStartRoute(config: config, session: session);
+      final desired = decideStartRoute(
+        config: config,
+        session: session,
+        requireLogin: requireLogin,
+      );
       final loc = state.matchedLocation;
 
       // If we're already at the desired route, no redirect.
       if (loc == desired) return null;
+      // When public access is enabled, login remains optional for admin/user
+      // features, and setup remains reachable for changing servers.
+      if (!requireLogin && (loc == '/login' || loc == '/setup')) return null;
       // Allow free movement between login <-> setup once both load.
       if (loc == '/setup' && desired == '/login') return null;
       // Once the user is authenticated (desired='/'), let them stay on any

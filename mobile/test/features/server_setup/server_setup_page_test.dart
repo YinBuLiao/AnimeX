@@ -34,7 +34,8 @@ Widget _harness({
 }
 
 void main() {
-  testWidgets('shows URL input + self-signed checkbox + test button', (tester) async {
+  testWidgets('shows URL input + self-signed checkbox + test button',
+      (tester) async {
     final dio = buildDio(
       config: const ServerConfig(baseUrl: 'https://x'),
       sessionStore: InMemorySessionStore(),
@@ -66,7 +67,8 @@ void main() {
     expect(find.textContaining('http://'), findsWidgets);
   });
 
-  testWidgets('successful health probe saves config and shows version', (tester) async {
+  testWidgets('successful health probe saves config and shows version',
+      (tester) async {
     final configStore = InMemoryServerConfigStore();
     final dio = buildDio(
       config: const ServerConfig(baseUrl: 'https://server.example'),
@@ -82,7 +84,8 @@ void main() {
       dio: dio,
       child: const ServerSetupPage(),
     ));
-    await tester.enterText(find.byType(TextField).first, 'https://server.example');
+    await tester.enterText(
+        find.byType(TextField).first, 'https://server.example');
     await tester.tap(find.widgetWithText(FilledButton, '测试连接'));
     await tester.pumpAndSettle();
 
@@ -91,7 +94,40 @@ void main() {
     expect(saved.baseUrl, 'https://server.example');
   });
 
-  testWidgets('health probe with installed=false shows warning + disables next button', (tester) async {
+  testWidgets('health probe offers start button when login is not required',
+      (tester) async {
+    final configStore = InMemoryServerConfigStore();
+    final dio = buildDio(
+      config: const ServerConfig(baseUrl: 'https://server.example'),
+      sessionStore: InMemorySessionStore(),
+    );
+    DioAdapter(dio: dio).onGet(
+      '/api/health',
+      (s) => s.reply(200, {
+        'ok': true,
+        'version': 'v0.2',
+        'installed': true,
+        'require_login': false,
+      }),
+    );
+
+    await tester.pumpWidget(_harness(
+      configStore: configStore,
+      dio: dio,
+      child: const ServerSetupPage(),
+    ));
+    await tester.enterText(
+        find.byType(TextField).first, 'https://server.example');
+    await tester.tap(find.widgetWithText(FilledButton, '测试连接'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, '开始使用'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '下一步：登录'), findsNothing);
+  });
+
+  testWidgets(
+      'health probe with installed=false shows warning + disables next button',
+      (tester) async {
     final configStore = InMemoryServerConfigStore();
     final dio = buildDio(
       config: const ServerConfig(baseUrl: 'https://server.example'),
@@ -107,7 +143,8 @@ void main() {
       dio: dio,
       child: const ServerSetupPage(),
     ));
-    await tester.enterText(find.byType(TextField).first, 'https://server.example');
+    await tester.enterText(
+        find.byType(TextField).first, 'https://server.example');
     await tester.tap(find.widgetWithText(FilledButton, '测试连接'));
     await tester.pumpAndSettle();
 
@@ -116,5 +153,37 @@ void main() {
       find.widgetWithText(FilledButton, '下一步：登录'),
     );
     expect(nextButton.onPressed, isNull);
+  });
+
+  testWidgets('401 health probe still saves config and offers login',
+      (tester) async {
+    final configStore = InMemoryServerConfigStore();
+    final dio = buildDio(
+      config: const ServerConfig(baseUrl: 'https://server.example'),
+      sessionStore: InMemorySessionStore(),
+    );
+    DioAdapter(dio: dio).onGet(
+      '/api/health',
+      (s) => s.reply(401, {'error': '请先登录'}),
+    );
+
+    await tester.pumpWidget(_harness(
+      configStore: configStore,
+      dio: dio,
+      child: const ServerSetupPage(),
+    ));
+    await tester.enterText(
+        find.byType(TextField).first, 'https://server.example');
+    await tester.tap(find.widgetWithText(FilledButton, '测试连接'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('需要登录'), findsOneWidget);
+    expect(find.textContaining('连接失败'), findsNothing);
+    final nextButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '下一步：登录'),
+    );
+    expect(nextButton.onPressed, isNotNull);
+    final saved = await configStore.load();
+    expect(saved.baseUrl, 'https://server.example');
   });
 }

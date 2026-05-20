@@ -14,11 +14,12 @@ func (s Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg := s.runtimeConfig()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":                true,
-		"version":           s.Version,
-		"installed":         s.installed(),
-		"mikan_configured":  cfg.MikanConfigured(),
-		"mysql_ready":       s.store() != nil,
+		"ok":               true,
+		"version":          s.Version,
+		"installed":        s.installed(),
+		"require_login":    cfg.RequireLogin,
+		"mikan_configured": cfg.MikanConfigured(),
+		"mysql_ready":      s.store() != nil,
 		"pikpak_configured": cfg.PikPakTokenConfigured() ||
 			(strings.TrimSpace(cfg.Username) != "" && strings.TrimSpace(cfg.Password) != ""),
 		"storage_provider": cfg.NormalizedStorageProvider(),

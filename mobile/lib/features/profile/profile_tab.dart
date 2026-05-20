@@ -126,7 +126,63 @@ class ProfileTab extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (s) {
           if (s == null) {
-            return const Center(child: Text('未登录'));
+            return ListView(
+              children: [
+                const SizedBox(height: 16),
+                Center(
+                  child: CircleAvatar(
+                    radius: 36,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: const Icon(Icons.person_outline, size: 32),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    '访客',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Center(
+                  child: Text(
+                    '当前服务器未要求登录',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.cloud_outlined),
+                  title: const Text('当前服务器'),
+                  subtitle: Text(serverLabel),
+                ),
+                const _HealthStatusRow(),
+                ListTile(
+                  leading: const Icon(Icons.login),
+                  title: const Text('登录'),
+                  subtitle: const Text('登录后可使用管理员和个人功能'),
+                  onTap: () => GoRouter.of(context).push('/login'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz),
+                  title: const Text('更换服务器'),
+                  onTap: () async {
+                    final router = GoRouter.of(context);
+                    await ref.read(serverConfigStoreProvider).clear();
+                    ref.invalidate(serverConfigProvider);
+                    ref.invalidate(requireLoginProvider);
+                    if (context.mounted) router.go('/setup');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: const Text('设置'),
+                  onTap: () => GoRouter.of(context).push('/settings'),
+                ),
+              ],
+            );
           }
           return ListView(
             children: [
@@ -198,8 +254,7 @@ class ProfileTab extends ConsumerWidget {
                 leading: const Icon(Icons.password_outlined),
                 title: const Text('修改密码'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () =>
-                    GoRouter.of(context).push('/profile/password'),
+                onTap: () => GoRouter.of(context).push('/profile/password'),
               ),
               const Divider(height: 1),
               ListTile(
@@ -207,16 +262,14 @@ class ProfileTab extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.error),
                 title: Text(
                   '退出登录',
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 onTap: () async {
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: const Text('退出登录？'),
-                      content: const Text(
-                          '退出后需要重新登录才能继续观看；已下载的离线视频会保留。'),
+                      content: const Text('退出后需要重新登录才能继续观看；已下载的离线视频会保留。'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(false),
@@ -232,11 +285,14 @@ class ProfileTab extends ConsumerWidget {
                   if (ok != true) return;
                   if (!context.mounted) return;
                   final router = GoRouter.of(context);
-                  final repo =
-                      await ref.read(authRepositoryProvider.future);
+                  final repo = await ref.read(authRepositoryProvider.future);
                   await repo.logout();
                   ref.invalidate(currentSessionProvider);
-                  if (context.mounted) router.go('/login');
+                  final requireLogin =
+                      ref.read(requireLoginProvider).asData?.value ?? true;
+                  if (context.mounted) {
+                    router.go(requireLogin ? '/login' : '/');
+                  }
                 },
               ),
             ],

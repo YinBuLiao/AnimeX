@@ -20,6 +20,7 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
   bool _allowSelfSigned = false;
   bool _busy = false;
   String? _error;
+  bool _requiresLogin = false;
   HealthInfo? _lastHealth;
 
   @override
@@ -31,6 +32,7 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
   Future<void> _testConnection() async {
     setState(() {
       _error = null;
+      _requiresLogin = false;
       _lastHealth = null;
       _busy = true;
     });
@@ -47,6 +49,7 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
       final health = await SystemRepository(dio).health();
       await ref.read(serverConfigStoreProvider).save(config);
       ref.invalidate(serverConfigProvider);
+      ref.invalidate(requireLoginProvider);
       if (!mounted) return;
       setState(() {
         _lastHealth = health;
@@ -54,6 +57,26 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
     } on FormatException catch (e) {
       setState(() => _error = '${e.message}（请填写 http:// 或 https:// 开头的地址）');
     } on ApiException catch (e) {
+      if (e.statusCode == 401) {
+        try {
+          final config = ServerConfig.normalize(
+            _urlController.text,
+            allowSelfSigned: _allowSelfSigned,
+          );
+          await ref.read(serverConfigStoreProvider).save(config);
+          ref.invalidate(serverConfigProvider);
+          ref.invalidate(requireLoginProvider);
+          if (!mounted) return;
+          setState(() {
+            _requiresLogin = true;
+          });
+          return;
+        } on FormatException catch (formatError) {
+          setState(() =>
+              _error = '${formatError.message}（请填写 http:// 或 https:// 开头的地址）');
+          return;
+        }
+      }
       setState(() => _error = '连接失败: ${e.message}');
     } catch (e) {
       setState(() => _error = '连接失败: $e');
@@ -63,6 +86,8 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
   }
 
   void _proceedToLogin() => context.go('/login');
+
+  void _proceedToHome() => context.go('/');
 
   @override
   Widget build(BuildContext context) {
@@ -103,8 +128,7 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
                   padding: EdgeInsets.only(left: 12, bottom: 8),
                   child: Text(
                     '仅在你完全信任此服务器（如自宅自签证书）时启用。',
-                    style:
-                        TextStyle(color: Colors.orangeAccent, fontSize: 12),
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 12),
                   ),
                 ),
               const SizedBox(height: 24),
@@ -129,8 +153,21 @@ class _ServerSetupPageState extends ConsumerState<ServerSetupPage> {
                   ),
                 const SizedBox(height: 8),
                 FilledButton.tonal(
-                  onPressed:
-                      _lastHealth!.installed ? _proceedToLogin : null,
+                  onPressed: _lastHealth!.installed
+                      ? (_lastHealth!.requireLogin
+                          ? _proceedToLogin
+                          : _proceedToHome)
+                      : null,
+                  child: Text(
+                    _lastHealth!.requireLogin ? '下一步：登录' : '开始使用',
+                  ),
+                ),
+              ],
+              if (_requiresLogin) ...[
+                const Text('服务器连接成功，需要登录后继续。'),
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: _proceedToLogin,
                   child: const Text('下一步：登录'),
                 ),
               ],

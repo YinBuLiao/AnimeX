@@ -18,8 +18,19 @@ void main() {
       final r = decideStartRoute(
         config: const ServerConfig(baseUrl: 'https://x'),
         session: null,
+        requireLogin: true,
       );
       expect(r, '/login');
+    });
+
+    test('routes to / when server does not require login and no session exists',
+        () {
+      final r = decideStartRoute(
+        config: const ServerConfig(baseUrl: 'https://x'),
+        session: null,
+        requireLogin: false,
+      );
+      expect(r, '/');
     });
 
     test('routes to /login when session has empty token', () {
@@ -27,8 +38,20 @@ void main() {
         config: const ServerConfig(baseUrl: 'https://x'),
         session: const StoredSession(
             token: '', username: 'u', role: 'user', expiresAtSec: 0),
+        requireLogin: true,
       );
       expect(r, '/login');
+    });
+
+    test('routes to / when server does not require login and token is empty',
+        () {
+      final r = decideStartRoute(
+        config: const ServerConfig(baseUrl: 'https://x'),
+        session: const StoredSession(
+            token: '', username: 'u', role: 'user', expiresAtSec: 0),
+        requireLogin: false,
+      );
+      expect(r, '/');
     });
 
     test('routes to / (home) when both server and session present', () {

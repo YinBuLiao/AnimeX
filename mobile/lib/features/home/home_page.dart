@@ -40,7 +40,7 @@ class HomePage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('错误：$e')),
         data: (s) {
-          if (s == null) return const Center(child: Text('未登录'));
+          final username = s?.username ?? '访客';
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(_historyProvider);
@@ -49,7 +49,7 @@ class HomePage extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
-                _Greeting(username: s.username),
+                _Greeting(username: username),
                 const SizedBox(height: 16),
                 const _ContinueWatchingSection(),
                 const SizedBox(height: 16),
@@ -226,8 +226,8 @@ class _HistoryCard extends ConsumerWidget {
     final libAsync = ref.read(libraryListProvider);
     final cfgAsync = ref.read(serverConfigProvider);
     final downloads = ref.read(downloadManagerProvider);
-    final baseUrl =
-        cfgAsync.maybeWhen(data: (c) => c.baseUrl.trimRight(), orElse: () => '');
+    final baseUrl = cfgAsync.maybeWhen(
+        data: (c) => c.baseUrl.trimRight(), orElse: () => '');
     final bangumi = libAsync.maybeWhen(
       data: (lib) => lib.bangumi
           .where((b) => b.title == entry.bangumiTitle)
@@ -373,9 +373,7 @@ class _LibrarySection extends ConsumerWidget {
             ],
           );
         }
-        final items = showAll
-            ? lib.bangumi
-            : lib.bangumi.take(8).toList();
+        final items = showAll ? lib.bangumi : lib.bangumi.take(8).toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

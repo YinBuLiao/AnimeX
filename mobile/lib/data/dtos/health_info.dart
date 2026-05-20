@@ -1,6 +1,7 @@
 class HealthInfo {
   final String version;
   final bool installed;
+  final bool requireLogin;
   final bool mikanConfigured;
   final bool mysqlReady;
   final bool pikpakConfigured;
@@ -9,6 +10,7 @@ class HealthInfo {
   const HealthInfo({
     required this.version,
     required this.installed,
+    this.requireLogin = true,
     this.mikanConfigured = false,
     this.mysqlReady = false,
     this.pikpakConfigured = false,
@@ -18,6 +20,7 @@ class HealthInfo {
   factory HealthInfo.fromJson(Map<String, dynamic> j) => HealthInfo(
         version: (j['version'] as String?) ?? '',
         installed: (j['installed'] as bool?) ?? false,
+        requireLogin: (j['require_login'] as bool?) ?? true,
         mikanConfigured: (j['mikan_configured'] as bool?) ?? false,
         mysqlReady: (j['mysql_ready'] as bool?) ?? false,
         pikpakConfigured: (j['pikpak_configured'] as bool?) ?? false,
